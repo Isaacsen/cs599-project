@@ -53,6 +53,7 @@ Test Framework: pytest
 Source files: 1
 Test files: 1
 Generated Tests: True
+Planned Test Cases: 2
 Generated Test Cases: 2
 Test Result: PASSED
 Executor: docker
@@ -100,6 +101,7 @@ Pytest Summary:
 - `generated_suite: GeneratedTestSuite | None`
 - `generated_tests_enabled: bool`
 - `analysis: PytestSummary`
+- `test_plan: TestPlan | None`
 
 ### 2.4 GeneratedTestSuite
 
@@ -120,6 +122,21 @@ Pytest Summary:
 - `warnings: int`
 - `total: int`
 - `conclusion: str`
+
+### 2.6 TestPlan
+
+字段：
+
+- `items: list[TestPlanItem]`
+
+### 2.7 TestPlanItem
+
+字段：
+
+- `module_name: str`
+- `function_name: str`
+- `scenario: str`
+- `rationale: str`
 
 ## 3. 后续 HTTP API 规划
 

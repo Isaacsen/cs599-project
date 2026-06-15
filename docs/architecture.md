@@ -6,10 +6,11 @@
 flowchart TD
     A["用户输入 Python 项目路径"] --> B["Repo Scanner"]
     B --> C{"是否生成测试"}
-    C --> D["Test Generator Agent"]
-    D --> E["临时测试工作区"]
+    C --> D["Test Planner Agent"]
+    D --> E["Test Generator Agent"]
+    E --> N["临时测试工作区"]
     C --> F{"选择执行后端"}
-    E --> F
+    N --> F
     F --> G["Local Pytest Executor"]
     F --> H["Docker Sandbox Executor"]
     H --> I["权限隔离策略"]
@@ -68,7 +69,7 @@ python -m src.main examples/sample_python_project --executor docker
 python -m src.main examples/sample_python_project --generate-tests --executor docker
 ```
 
-系统能够自动生成 pytest 测试，在临时工作区中执行，并在报告中展示生成测试数量。
+系统能够生成结构化测试计划和 pytest 测试，在临时工作区中执行，并在报告中展示规划与生成测试数量。
 
 ## 第四阶段验收标准
 

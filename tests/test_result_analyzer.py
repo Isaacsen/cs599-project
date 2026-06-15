@@ -5,6 +5,7 @@ from pathlib import Path
 
 from src.agents.result_analyzer import analyze_pytest_result
 from src.agents.test_generator import GeneratedTestSuite
+from src.agents.test_planner import plan_tests
 from src.sandbox.local_executor import TestExecutionResult
 from src.tools.repo_scanner import scan_repository
 from src.tools.report_writer import write_json_report
@@ -60,6 +61,10 @@ class ResultAnalyzerTest(unittest.TestCase):
             scan=scan_repository("examples/sample_python_project"),
             execution=execution,
             analysis=analyze_pytest_result(execution),
+            test_plan=plan_tests(
+                "examples/sample_python_project",
+                scan_repository("examples/sample_python_project"),
+            ),
             generated_suite=GeneratedTestSuite(
                 test_file_name="test_testguard_generated.py",
                 content="def test_sample():\n    assert True\n",
@@ -73,6 +78,7 @@ class ResultAnalyzerTest(unittest.TestCase):
 
         self.assertEqual("Python", data["scan"]["language"])
         self.assertTrue(data["generated_tests_enabled"])
+        self.assertEqual(2, len(data["test_plan"]["items"]))
         self.assertEqual(2, len(data["generated_suite"]["covered_functions"]))
         self.assertIn("analysis", data)
 

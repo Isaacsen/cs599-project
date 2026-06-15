@@ -5,7 +5,8 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from src.agents.result_analyzer import PytestSummary, analyze_pytest_result
-from src.agents.test_generator import GeneratedTestSuite, generate_pytest_tests
+from src.agents.test_generator import GeneratedTestSuite, generate_pytest_tests_from_plan
+from src.agents.test_planner import TestPlan, plan_tests
 from src.sandbox.docker_executor import run_pytest_in_docker
 from src.sandbox.local_executor import TestExecutionResult, run_pytest
 from src.sandbox.policy import SandboxPolicy
@@ -18,6 +19,7 @@ class PipelineReport:
     scan: RepositoryScanResult
     execution: TestExecutionResult
     analysis: PytestSummary
+    test_plan: TestPlan | None = None
     generated_suite: GeneratedTestSuite | None = None
     generated_tests_enabled: bool = False
 
@@ -30,11 +32,13 @@ def run_pipeline(
     generate_tests: bool = False,
 ) -> PipelineReport:
     scan = scan_repository(project_path)
+    test_plan: TestPlan | None = None
     generated_suite: GeneratedTestSuite | None = None
     execution_project = Path(project_path)
 
     if generate_tests:
-        generated_suite = generate_pytest_tests(project_path, scan)
+        test_plan = plan_tests(project_path, scan)
+        generated_suite = generate_pytest_tests_from_plan(test_plan)
         with tempfile.TemporaryDirectory(prefix="testguard-") as temp_dir:
             execution_project = copy_project_with_generated_tests(project_path, temp_dir, generated_suite)
             execution = _run_executor(
@@ -48,6 +52,7 @@ def run_pipeline(
             scan=scan,
             execution=execution,
             analysis=analysis,
+            test_plan=test_plan,
             generated_suite=generated_suite,
             generated_tests_enabled=True,
         )
@@ -63,6 +68,7 @@ def run_pipeline(
         scan=scan,
         execution=execution,
         analysis=analysis,
+        test_plan=test_plan,
         generated_tests_enabled=False,
     )
 
@@ -93,6 +99,7 @@ def format_report(report: PipelineReport) -> str:
         f"Test files: {len(report.scan.test_files)}",
         "",
         f"Generated Tests: {report.generated_tests_enabled}",
+        f"Planned Test Cases: {_planned_test_count(report)}",
         f"Generated Test Cases: {_generated_test_count(report)}",
         f"Executor: {report.execution.executor}",
         f"Test Result: {status}",
@@ -122,3 +129,9 @@ def _generated_test_count(report: PipelineReport) -> int:
     if report.generated_suite is None:
         return 0
     return report.generated_suite.test_count
+
+
+def _planned_test_count(report: PipelineReport) -> int:
+    if report.test_plan is None:
+        return 0
+    return report.test_plan.item_count
