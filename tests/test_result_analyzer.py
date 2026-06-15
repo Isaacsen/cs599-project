@@ -3,6 +3,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
+from src.agents.failure_diagnoser import diagnose_failure
 from src.agents.result_analyzer import analyze_pytest_result
 from src.agents.test_generator import GeneratedTestSuite
 from src.agents.test_planner import plan_tests
@@ -61,6 +62,7 @@ class ResultAnalyzerTest(unittest.TestCase):
             scan=scan_repository("examples/sample_python_project"),
             execution=execution,
             analysis=analyze_pytest_result(execution),
+            diagnosis=diagnose_failure(execution, analyze_pytest_result(execution)),
             test_plan=plan_tests(
                 "examples/sample_python_project",
                 scan_repository("examples/sample_python_project"),
@@ -81,6 +83,7 @@ class ResultAnalyzerTest(unittest.TestCase):
         self.assertEqual(2, len(data["test_plan"]["items"]))
         self.assertEqual(2, len(data["generated_suite"]["covered_functions"]))
         self.assertIn("analysis", data)
+        self.assertEqual("no_issue", data["diagnosis"]["status"])
 
     def test_timeout_conclusion(self) -> None:
         execution = TestExecutionResult(

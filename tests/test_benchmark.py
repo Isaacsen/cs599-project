@@ -1,6 +1,7 @@
 import unittest
 
 from src.evaluation.benchmark import BenchmarkCase, BenchmarkResult, summarize_results
+from src.agents.failure_diagnoser import FailureDiagnosis
 from src.agents.result_analyzer import PytestSummary
 from src.sandbox.local_executor import TestExecutionResult
 from src.tools.repo_scanner import RepositoryScanResult
@@ -26,6 +27,12 @@ class BenchmarkSummaryTest(unittest.TestCase):
                 timed_out=False,
             ),
             analysis=PytestSummary(passed=5, total=5, conclusion="passed"),
+            diagnosis=FailureDiagnosis(
+                status="no_issue",
+                failure_types=[],
+                key_findings=[],
+                suggestions=["All tests passed."],
+            ),
         )
         result = BenchmarkResult(
             case=BenchmarkCase(name="sample", project_path="examples/sample_python_project"),

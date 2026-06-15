@@ -66,6 +66,9 @@ Pytest Summary:
   skipped: 0
   warnings: 0
   conclusion: passed
+Diagnosis:
+  status: no_issue
+  failure_types: none
 ```
 
 ### 1.2 执行 Benchmark 评估
@@ -137,6 +140,7 @@ Total Duration: 1.00s
 - `generated_tests_enabled: bool`
 - `analysis: PytestSummary`
 - `test_plan: TestPlan | None`
+- `diagnosis: FailureDiagnosis`
 
 ### 2.4 GeneratedTestSuite
 
@@ -185,6 +189,15 @@ Total Duration: 1.00s
 - `generated_test_cases: int`
 - `planned_test_cases: int`
 - `total_duration_seconds: float`
+
+### 2.9 FailureDiagnosis
+
+字段：
+
+- `status: str`
+- `failure_types: list[str]`
+- `key_findings: list[str]`
+- `suggestions: list[str]`
 
 ## 3. 后续 HTTP API 规划
 

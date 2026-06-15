@@ -13,9 +13,9 @@
   "execution": {
     "passed": true,
     "exit_code": 0,
-    "stdout": "============================= test session starts ==============================\nplatform linux -- Python 3.11.15, pytest-9.1.0, pluggy-1.6.0\nrootdir: /workspace\ncollected 5 items\n\ntest_calculator.py ...                                                   [ 60%]\ntests/test_testguard_generated.py ..                                     [100%]\n\n============================== 5 passed in 0.09s ===============================\n",
+    "stdout": "============================= test session starts ==============================\nplatform linux -- Python 3.11.15, pytest-9.1.0, pluggy-1.6.0\nrootdir: /workspace\ncollected 5 items\n\ntest_calculator.py ...                                                   [ 60%]\ntests/test_testguard_generated.py ..                                     [100%]\n\n============================== 5 passed in 0.06s ===============================\n",
     "stderr": "",
-    "duration_seconds": 1.3331515999961994,
+    "duration_seconds": 1.0271003000016208,
     "timed_out": false,
     "executor": "docker"
   },
@@ -27,6 +27,14 @@
     "warnings": 0,
     "total": 5,
     "conclusion": "passed"
+  },
+  "diagnosis": {
+    "status": "no_issue",
+    "failure_types": [],
+    "key_findings": [],
+    "suggestions": [
+      "All tests passed. Keep generated tests as regression coverage."
+    ]
   },
   "test_plan": {
     "items": [

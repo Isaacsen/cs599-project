@@ -2,7 +2,7 @@
 
 ## 1. 架构目标
 
-TestGuard Agent 采用分层架构，将代码理解、测试规划、测试生成、隔离执行和结果分析解耦。第一阶段实现仓库扫描与本地测试执行，第二阶段加入 Docker 沙箱执行器，第三阶段加入可离线演示的测试规划与生成 Agent，第四阶段加入结果分析与 JSON 运行报告，第五阶段加入 Benchmark 评估。
+TestGuard Agent 采用分层架构，将代码理解、测试规划、测试生成、隔离执行和结果分析解耦。第一阶段实现仓库扫描与本地测试执行，第二阶段加入 Docker 沙箱执行器，第三阶段加入可离线演示的测试规划与生成 Agent，第四阶段加入结果分析与 JSON 运行报告，第五阶段加入 Benchmark 评估，第六阶段加入失败诊断与修复建议。
 
 ## 2. 总体流程
 
@@ -42,6 +42,7 @@ Repo Scanner
   -> Temporary Test Workspace
   -> Local / Docker Executor
   -> Result Analyzer Agent
+  -> Failure Diagnoser Agent
   -> JSON Trace Writer
   -> Console Report
 ```
@@ -156,7 +157,17 @@ Benchmark Cases
 - 提取 passed、failed、errors、skipped、warnings 和 total。
 - 根据执行结果生成 conclusion，如 `passed`、`failed`、`timeout` 或 `execution_error`。
 
-### 3.10 Report Writer
+### 3.10 Failure Diagnoser Agent
+
+位置：`src/agents/failure_diagnoser.py`
+
+职责：
+
+- 根据 pytest 输出和 PytestSummary 判断失败类型。
+- 提取 FAILED / ERROR 目标和关键错误行。
+- 为 assertion failure、import error、timeout 等常见问题生成修复建议。
+
+### 3.11 Report Writer
 
 位置：`src/tools/report_writer.py`
 
@@ -166,7 +177,7 @@ Benchmark Cases
 - 写出可审计、可复现的运行报告。
 - 支持最终报告中的测试评估证据留存。
 
-### 3.11 Benchmark Evaluator
+### 3.12 Benchmark Evaluator
 
 位置：`src/evaluation/benchmark.py`
 
@@ -177,7 +188,7 @@ Benchmark Cases
 - 聚合通过率、pytest 用例数量、规划测试数量、生成测试数量和总耗时。
 - 写出 Benchmark JSON 报告。
 
-### 3.12 Future Agent Modules
+### 3.13 Future Agent Modules
 
 位置：`src/agents/`
 
@@ -211,6 +222,7 @@ Project Path
   -> Temporary Workspace
   -> TestExecutionResult
   -> PytestSummary
+  -> FailureDiagnosis
   -> PipelineReport
   -> CLI Output / JSON Trace
 
@@ -233,6 +245,7 @@ BenchmarkCase
 - 执行耗时。
 - 是否超时。
 - pytest 汇总统计。
+- 失败诊断与修复建议。
 - JSON 运行报告。
 - Benchmark 汇总指标。
 

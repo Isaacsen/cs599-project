@@ -17,7 +17,8 @@ flowchart TD
     I --> J["网络禁用 / 只读挂载 / 资源限制"]
     G --> K["Result Analyzer Agent"]
     J --> K
-    K --> L["Pipeline Report"]
+    K --> O["Failure Diagnoser Agent"]
+    O --> L["Pipeline Report"]
     L --> M["CLI 输出 / JSON Trace"]
 ```
 
@@ -90,3 +91,7 @@ python -m src.benchmark --executor docker --output docs/runs/benchmark.json
 ```
 
 系统能够批量运行评估用例，并输出包含通过率、pytest 用例数量、规划测试数量、生成测试数量和总耗时的 Benchmark JSON 报告。
+
+## 第六阶段验收标准
+
+当 pytest 失败或超时时，系统能够在 CLI 和 JSON 报告中输出失败类型、关键线索和修复建议。

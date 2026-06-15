@@ -4,6 +4,7 @@ import tempfile
 from dataclasses import dataclass
 from pathlib import Path
 
+from src.agents.failure_diagnoser import FailureDiagnosis, diagnose_failure
 from src.agents.result_analyzer import PytestSummary, analyze_pytest_result
 from src.agents.test_generator import GeneratedTestSuite, generate_pytest_tests_from_plan
 from src.agents.test_planner import TestPlan, plan_tests
@@ -19,6 +20,7 @@ class PipelineReport:
     scan: RepositoryScanResult
     execution: TestExecutionResult
     analysis: PytestSummary
+    diagnosis: FailureDiagnosis
     test_plan: TestPlan | None = None
     generated_suite: GeneratedTestSuite | None = None
     generated_tests_enabled: bool = False
@@ -48,10 +50,12 @@ def run_pipeline(
                 docker_image=docker_image,
             )
         analysis = analyze_pytest_result(execution)
+        diagnosis = diagnose_failure(execution, analysis)
         return PipelineReport(
             scan=scan,
             execution=execution,
             analysis=analysis,
+            diagnosis=diagnosis,
             test_plan=test_plan,
             generated_suite=generated_suite,
             generated_tests_enabled=True,
@@ -64,10 +68,12 @@ def run_pipeline(
         docker_image=docker_image,
     )
     analysis = analyze_pytest_result(execution)
+    diagnosis = diagnose_failure(execution, analysis)
     return PipelineReport(
         scan=scan,
         execution=execution,
         analysis=analysis,
+        diagnosis=diagnosis,
         test_plan=test_plan,
         generated_tests_enabled=False,
     )
@@ -115,7 +121,18 @@ def format_report(report: PipelineReport) -> str:
         f"  skipped: {report.analysis.skipped}",
         f"  warnings: {report.analysis.warnings}",
         f"  conclusion: {report.analysis.conclusion}",
+        "",
+        "Diagnosis:",
+        f"  status: {report.diagnosis.status}",
+        f"  failure_types: {', '.join(report.diagnosis.failure_types) if report.diagnosis.failure_types else 'none'}",
     ]
+
+    if report.diagnosis.key_findings:
+        lines.append("  key_findings:")
+        lines.extend(f"    - {finding}" for finding in report.diagnosis.key_findings)
+    if report.diagnosis.suggestions:
+        lines.append("  suggestions:")
+        lines.extend(f"    - {suggestion}" for suggestion in report.diagnosis.suggestions)
 
     if report.execution.stdout.strip():
         lines.extend(["", "pytest stdout:", report.execution.stdout.rstrip()])
