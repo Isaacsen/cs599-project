@@ -5,7 +5,7 @@
 ### 1.1 执行测试闭环
 
 ```bash
-python -m src.main <project_path> [--timeout SECONDS] [--executor local|docker] [--docker-image IMAGE] [--generate-tests]
+python -m src.main <project_path> [--timeout SECONDS] [--executor local|docker] [--docker-image IMAGE] [--generate-tests] [--report-json PATH]
 ```
 
 参数：
@@ -15,6 +15,7 @@ python -m src.main <project_path> [--timeout SECONDS] [--executor local|docker] 
 - `--executor`：测试执行后端，默认 `local`，可选 `docker`。
 - `--docker-image`：Docker 执行后端使用的镜像，默认 `testguard-python:latest`。
 - `--generate-tests`：执行前生成 pytest 测试，并在临时项目副本中运行。
+- `--report-json`：可选 JSON 报告输出路径。
 
 示例：
 
@@ -35,6 +36,12 @@ python -m src.main examples/sample_python_project --executor docker
 python -m src.main examples/sample_python_project --generate-tests --executor docker
 ```
 
+生成测试、沙箱执行并保存 JSON 报告：
+
+```bash
+python -m src.main examples/sample_python_project --generate-tests --executor docker --report-json docs/runs/sample_run.json
+```
+
 输出：
 
 ```text
@@ -50,6 +57,14 @@ Generated Test Cases: 2
 Test Result: PASSED
 Executor: docker
 Duration: 0.50s
+Pytest Summary:
+  total: 5
+  passed: 5
+  failed: 0
+  errors: 0
+  skipped: 0
+  warnings: 0
+  conclusion: passed
 ```
 
 ## 2. 内部数据结构
@@ -84,6 +99,7 @@ Duration: 0.50s
 - `execution: TestExecutionResult`
 - `generated_suite: GeneratedTestSuite | None`
 - `generated_tests_enabled: bool`
+- `analysis: PytestSummary`
 
 ### 2.4 GeneratedTestSuite
 
@@ -92,6 +108,18 @@ Duration: 0.50s
 - `test_file_name: str`
 - `content: str`
 - `covered_functions: list[str]`
+
+### 2.5 PytestSummary
+
+字段：
+
+- `passed: int`
+- `failed: int`
+- `errors: int`
+- `skipped: int`
+- `warnings: int`
+- `total: int`
+- `conclusion: str`
 
 ## 3. 后续 HTTP API 规划
 

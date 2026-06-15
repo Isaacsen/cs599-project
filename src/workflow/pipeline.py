@@ -4,6 +4,7 @@ import tempfile
 from dataclasses import dataclass
 from pathlib import Path
 
+from src.agents.result_analyzer import PytestSummary, analyze_pytest_result
 from src.agents.test_generator import GeneratedTestSuite, generate_pytest_tests
 from src.sandbox.docker_executor import run_pytest_in_docker
 from src.sandbox.local_executor import TestExecutionResult, run_pytest
@@ -16,6 +17,7 @@ from src.tools.test_workspace import copy_project_with_generated_tests
 class PipelineReport:
     scan: RepositoryScanResult
     execution: TestExecutionResult
+    analysis: PytestSummary
     generated_suite: GeneratedTestSuite | None = None
     generated_tests_enabled: bool = False
 
@@ -41,9 +43,11 @@ def run_pipeline(
                 executor=executor,
                 docker_image=docker_image,
             )
+        analysis = analyze_pytest_result(execution)
         return PipelineReport(
             scan=scan,
             execution=execution,
+            analysis=analysis,
             generated_suite=generated_suite,
             generated_tests_enabled=True,
         )
@@ -54,7 +58,13 @@ def run_pipeline(
         executor=executor,
         docker_image=docker_image,
     )
-    return PipelineReport(scan=scan, execution=execution, generated_tests_enabled=False)
+    analysis = analyze_pytest_result(execution)
+    return PipelineReport(
+        scan=scan,
+        execution=execution,
+        analysis=analysis,
+        generated_tests_enabled=False,
+    )
 
 
 def _run_executor(
@@ -89,6 +99,15 @@ def format_report(report: PipelineReport) -> str:
         f"Exit Code: {report.execution.exit_code}",
         f"Timed Out: {report.execution.timed_out}",
         f"Duration: {report.execution.duration_seconds:.2f}s",
+        "",
+        "Pytest Summary:",
+        f"  total: {report.analysis.total}",
+        f"  passed: {report.analysis.passed}",
+        f"  failed: {report.analysis.failed}",
+        f"  errors: {report.analysis.errors}",
+        f"  skipped: {report.analysis.skipped}",
+        f"  warnings: {report.analysis.warnings}",
+        f"  conclusion: {report.analysis.conclusion}",
     ]
 
     if report.execution.stdout.strip():

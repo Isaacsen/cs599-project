@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import sys
 
+from src.tools.report_writer import write_json_report
 from src.workflow.pipeline import format_report, run_pipeline
 
 
@@ -31,6 +32,10 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Generate pytest tests before executing the selected backend.",
     )
+    parser.add_argument(
+        "--report-json",
+        help="Optional path to write a structured JSON run report.",
+    )
     return parser
 
 
@@ -51,6 +56,9 @@ def main() -> int:
         return 2
 
     print(format_report(report))
+    if args.report_json:
+        output_path = write_json_report(report, args.report_json)
+        print(f"\nJSON Report: {output_path}")
     return 0 if report.execution.passed else 1
 
 

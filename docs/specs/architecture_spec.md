@@ -2,7 +2,7 @@
 
 ## 1. 架构目标
 
-TestGuard Agent 采用分层架构，将代码理解、测试规划、测试生成、隔离执行和结果分析解耦。第一阶段实现仓库扫描与本地测试执行，第二阶段加入 Docker 沙箱执行器，第三阶段加入可离线演示的测试生成 Agent。
+TestGuard Agent 采用分层架构，将代码理解、测试规划、测试生成、隔离执行和结果分析解耦。第一阶段实现仓库扫描与本地测试执行，第二阶段加入 Docker 沙箱执行器，第三阶段加入可离线演示的测试生成 Agent，第四阶段加入结果分析与 JSON 运行报告。
 
 ## 2. 总体流程
 
@@ -32,7 +32,7 @@ Repo Scanner
   -> Console Report
 ```
 
-第三阶段实际流程：
+第四阶段实际流程：
 
 ```text
 Repo Scanner
@@ -40,6 +40,8 @@ Repo Scanner
   -> Generated Test Security Check
   -> Temporary Test Workspace
   -> Local / Docker Executor
+  -> Result Analyzer Agent
+  -> JSON Trace Writer
   -> Console Report
 ```
 
@@ -123,7 +125,27 @@ Repo Scanner
 - 写入生成的测试文件。
 - 让本地执行器或 Docker 执行器在临时副本中运行测试，避免修改原始项目。
 
-### 3.8 Agent Modules
+### 3.8 Result Analyzer Agent
+
+位置：`src/agents/result_analyzer.py`
+
+职责：
+
+- 解析 pytest stdout / stderr 中的汇总行。
+- 提取 passed、failed、errors、skipped、warnings 和 total。
+- 根据执行结果生成 conclusion，如 `passed`、`failed`、`timeout` 或 `execution_error`。
+
+### 3.9 Report Writer
+
+位置：`src/tools/report_writer.py`
+
+职责：
+
+- 将 PipelineReport 转换为 JSON 结构。
+- 写出可审计、可复现的运行报告。
+- 支持最终报告中的测试评估证据留存。
+
+### 3.10 Future Agent Modules
 
 位置：`src/agents/`
 
@@ -155,8 +177,9 @@ Project Path
   -> GeneratedTestSuite
   -> Temporary Workspace
   -> TestExecutionResult
+  -> PytestSummary
   -> PipelineReport
-  -> CLI Output / Future JSON Trace
+  -> CLI Output / JSON Trace
 ```
 
 ## 6. 可观测性
@@ -169,6 +192,8 @@ Project Path
 - stdout / stderr。
 - 执行耗时。
 - 是否超时。
+- pytest 汇总统计。
+- JSON 运行报告。
 
 后续将扩展为：
 

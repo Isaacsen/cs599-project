@@ -14,9 +14,10 @@ flowchart TD
     F --> H["Docker Sandbox Executor"]
     H --> I["权限隔离策略"]
     I --> J["网络禁用 / 只读挂载 / 资源限制"]
-    G --> K["Pipeline Report"]
+    G --> K["Result Analyzer Agent"]
     J --> K
-    K --> L["CLI 输出"]
+    K --> L["Pipeline Report"]
+    L --> M["CLI 输出 / JSON Trace"]
 ```
 
 ## 目标阶段架构
@@ -68,3 +69,13 @@ python -m src.main examples/sample_python_project --generate-tests --executor do
 ```
 
 系统能够自动生成 pytest 测试，在临时工作区中执行，并在报告中展示生成测试数量。
+
+## 第四阶段验收标准
+
+运行以下命令：
+
+```bash
+python -m src.main examples/sample_python_project --generate-tests --executor docker --report-json docs/runs/sample_run.json
+```
+
+系统能够解析 pytest 汇总结果，并输出包含扫描、执行、分析和生成测试信息的 JSON 报告。
