@@ -2,6 +2,7 @@
 
 ## Specs
 
+- `docs/CS599_大作业报告.md`：最终报告 Markdown 草稿，可转 PDF。
 - `docs/specs/product_spec.md`：产品规格，描述问题、用户、功能需求和非功能需求。
 - `docs/specs/architecture_spec.md`：架构规格，描述 Agent 模块、数据流、权限隔离和可观测性。
 - `docs/specs/api_spec.md`：API 规格，描述 CLI、Benchmark 命令和核心数据结构。

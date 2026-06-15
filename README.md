@@ -133,6 +133,7 @@ Benchmark 会运行默认样例项目，统计用例通过率、pytest 用例数
 
 ## Demo 与交付物
 
+- 报告草稿：`docs/CS599_大作业报告.md`
 - Demo 指南：`docs/demo_guide.md`
 - 交付物索引：`docs/artifacts.md`
 - 一键演示脚本：`scripts/run_demo.ps1`
