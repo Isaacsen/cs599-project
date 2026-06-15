@@ -4,6 +4,8 @@ import argparse
 import sys
 
 from src.tools.report_writer import write_json_report
+from src.tools.prompt_writer import write_llm_prompt
+from src.llm.prompt_builder import build_test_generation_prompt
 from src.workflow.pipeline import format_report, run_pipeline
 
 
@@ -36,6 +38,10 @@ def build_parser() -> argparse.ArgumentParser:
         "--report-json",
         help="Optional path to write a structured JSON run report.",
     )
+    parser.add_argument(
+        "--export-llm-prompt",
+        help="Optional path to write an LLM-ready test generation prompt.",
+    )
     return parser
 
 
@@ -59,6 +65,13 @@ def main() -> int:
     if args.report_json:
         output_path = write_json_report(report, args.report_json)
         print(f"\nJSON Report: {output_path}")
+    if args.export_llm_prompt:
+        if report.test_plan is None:
+            print("\nLLM Prompt: skipped because --generate-tests was not enabled")
+        else:
+            prompt = build_test_generation_prompt(args.project_path, report.test_plan)
+            prompt_path = write_llm_prompt(prompt, args.export_llm_prompt)
+            print(f"\nLLM Prompt: {prompt_path}")
     return 0 if report.execution.passed else 1
 
 

@@ -100,3 +100,13 @@ python -m src.benchmark --executor docker --output docs/runs/benchmark.json
 ## 第七阶段验收标准
 
 生成的 pytest 测试在执行前经过 Security Checker Agent，CLI 和 JSON 报告中能够展示安全检查是否通过。
+
+## 第八阶段验收标准
+
+运行以下命令：
+
+```bash
+python -m src.main examples/sample_python_project --generate-tests --export-llm-prompt docs/runs/llm_prompt.json
+```
+
+系统能够基于 TestPlan 和源码上下文导出 LLM 测试生成 Prompt，且 Prompt 工件不包含 API Key 明文。

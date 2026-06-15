@@ -5,7 +5,7 @@
 ### 1.1 执行测试闭环
 
 ```bash
-python -m src.main <project_path> [--timeout SECONDS] [--executor local|docker] [--docker-image IMAGE] [--generate-tests] [--report-json PATH]
+python -m src.main <project_path> [--timeout SECONDS] [--executor local|docker] [--docker-image IMAGE] [--generate-tests] [--report-json PATH] [--export-llm-prompt PATH]
 ```
 
 参数：
@@ -16,6 +16,7 @@ python -m src.main <project_path> [--timeout SECONDS] [--executor local|docker] 
 - `--docker-image`：Docker 执行后端使用的镜像，默认 `testguard-python:latest`。
 - `--generate-tests`：执行前生成 pytest 测试，并在临时项目副本中运行。
 - `--report-json`：可选 JSON 报告输出路径。
+- `--export-llm-prompt`：可选 LLM 测试生成 Prompt 输出路径，需要配合 `--generate-tests` 使用。
 
 示例：
 
@@ -40,6 +41,12 @@ python -m src.main examples/sample_python_project --generate-tests --executor do
 
 ```bash
 python -m src.main examples/sample_python_project --generate-tests --executor docker --report-json docs/runs/sample_run.json
+```
+
+导出 LLM Prompt：
+
+```bash
+python -m src.main examples/sample_python_project --generate-tests --export-llm-prompt docs/runs/llm_prompt.json
 ```
 
 输出：
@@ -215,6 +222,14 @@ Total Duration: 1.00s
 - `rule: str`
 - `detail: str`
 - `line: int`
+
+### 2.12 LLMTestPrompt
+
+字段：
+
+- `system: str`
+- `user: str`
+- `covered_functions: list[str]`
 
 ## 3. 后续 HTTP API 规划
 

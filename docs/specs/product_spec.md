@@ -67,6 +67,12 @@ pytest 输出 + PytestSummary -> Failure Diagnosis -> key findings + suggestions
 Generated Test Code -> Security Checker -> SecurityCheckResult -> PipelineReport
 ```
 
+第八阶段加入 LLM Prompt 导出：
+
+```text
+TestPlan + Source Context -> LLM Prompt Builder -> Prompt JSON Artifact
+```
+
 ## 5. 功能需求
 
 ### FR-1 项目扫描
@@ -120,6 +126,10 @@ Generated Test Code -> Security Checker -> SecurityCheckResult -> PipelineReport
 ### FR-13 生成测试安全检查
 
 系统应将生成测试代码的 AST 安全检查显式建模为 Agent 输出，报告是否通过、违规规则、违规内容和所在行号。
+
+### FR-14 LLM Prompt 导出
+
+系统应能基于测试计划和源码上下文导出 LLM 测试生成 Prompt，便于后续接入 DeepSeek、OpenAI 或本地模型，同时不得写出 API Key 明文。
 
 ## 6. 非功能需求
 
