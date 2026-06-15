@@ -2,7 +2,7 @@
 
 ## 1. 架构目标
 
-TestGuard Agent 采用分层架构，将代码理解、测试规划、测试生成、隔离执行和结果分析解耦。第一阶段实现仓库扫描与本地测试执行，第二阶段加入 Docker 沙箱执行器，第三阶段加入可离线演示的测试规划与生成 Agent，第四阶段加入结果分析与 JSON 运行报告。
+TestGuard Agent 采用分层架构，将代码理解、测试规划、测试生成、隔离执行和结果分析解耦。第一阶段实现仓库扫描与本地测试执行，第二阶段加入 Docker 沙箱执行器，第三阶段加入可离线演示的测试规划与生成 Agent，第四阶段加入结果分析与 JSON 运行报告，第五阶段加入 Benchmark 评估。
 
 ## 2. 总体流程
 
@@ -44,6 +44,15 @@ Repo Scanner
   -> Result Analyzer Agent
   -> JSON Trace Writer
   -> Console Report
+```
+
+第五阶段评估流程：
+
+```text
+Benchmark Cases
+  -> Pipeline Runs
+  -> Benchmark Aggregator
+  -> Benchmark JSON Report
 ```
 
 ## 3. 模块设计
@@ -157,7 +166,18 @@ Repo Scanner
 - 写出可审计、可复现的运行报告。
 - 支持最终报告中的测试评估证据留存。
 
-### 3.11 Future Agent Modules
+### 3.11 Benchmark Evaluator
+
+位置：`src/evaluation/benchmark.py`
+
+职责：
+
+- 定义 BenchmarkCase 和 BenchmarkResult。
+- 批量运行 pipeline。
+- 聚合通过率、pytest 用例数量、规划测试数量、生成测试数量和总耗时。
+- 写出 Benchmark JSON 报告。
+
+### 3.12 Future Agent Modules
 
 位置：`src/agents/`
 
@@ -193,11 +213,18 @@ Project Path
   -> PytestSummary
   -> PipelineReport
   -> CLI Output / JSON Trace
+
+Benchmark Data Flow:
+
+BenchmarkCase
+  -> PipelineReport
+  -> BenchmarkSummary
+  -> Benchmark JSON Report
 ```
 
 ## 6. 可观测性
 
-第一阶段记录：
+当前记录：
 
 - 源码文件数量。
 - 测试文件数量。
@@ -207,6 +234,7 @@ Project Path
 - 是否超时。
 - pytest 汇总统计。
 - JSON 运行报告。
+- Benchmark 汇总指标。
 
 后续将扩展为：
 

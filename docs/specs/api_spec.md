@@ -68,6 +68,41 @@ Pytest Summary:
   conclusion: passed
 ```
 
+### 1.2 执行 Benchmark 评估
+
+```bash
+python -m src.benchmark [--case name=project_path] [--timeout SECONDS] [--executor local|docker] [--docker-image IMAGE] [--output PATH]
+```
+
+参数：
+
+- `--case`：可选 Benchmark 用例，格式为 `name=project_path`，可重复传入。
+- `--timeout`：每个用例的测试执行超时时间，默认 30 秒。
+- `--executor`：测试执行后端，默认 `local`，可选 `docker`。
+- `--docker-image`：Docker 执行后端使用的镜像，默认 `testguard-python:latest`。
+- `--output`：Benchmark JSON 输出路径，默认 `docs/runs/benchmark.json`。
+
+示例：
+
+```bash
+python -m src.benchmark --executor docker --output docs/runs/benchmark.json
+```
+
+输出：
+
+```text
+[TestGuard Benchmark]
+
+Total Cases: 1
+Passed Cases: 1
+Failed Cases: 0
+Pass Rate: 100.00%
+Total Pytest Cases: 5
+Planned Test Cases: 2
+Generated Test Cases: 2
+Total Duration: 1.00s
+```
+
 ## 2. 内部数据结构
 
 ### 2.1 RepositoryScanResult
@@ -137,6 +172,19 @@ Pytest Summary:
 - `function_name: str`
 - `scenario: str`
 - `rationale: str`
+
+### 2.8 BenchmarkSummary
+
+字段：
+
+- `total_cases: int`
+- `passed_cases: int`
+- `failed_cases: int`
+- `pass_rate: float`
+- `total_pytest_cases: int`
+- `generated_test_cases: int`
+- `planned_test_cases: int`
+- `total_duration_seconds: float`
 
 ## 3. 后续 HTTP API 规划
 

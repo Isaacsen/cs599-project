@@ -80,3 +80,13 @@ python -m src.main examples/sample_python_project --generate-tests --executor do
 ```
 
 系统能够解析 pytest 汇总结果，并输出包含扫描、执行、分析和生成测试信息的 JSON 报告。
+
+## 第五阶段验收标准
+
+运行以下命令：
+
+```bash
+python -m src.benchmark --executor docker --output docs/runs/benchmark.json
+```
+
+系统能够批量运行评估用例，并输出包含通过率、pytest 用例数量、规划测试数量、生成测试数量和总耗时的 Benchmark JSON 报告。
