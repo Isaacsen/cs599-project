@@ -6,6 +6,7 @@ from pathlib import Path
 
 from src.agents.failure_diagnoser import FailureDiagnosis, diagnose_failure
 from src.agents.result_analyzer import PytestSummary, analyze_pytest_result
+from src.agents.security_checker import SecurityCheckResult, check_generated_test_code
 from src.agents.test_generator import GeneratedTestSuite, generate_pytest_tests_from_plan
 from src.agents.test_planner import TestPlan, plan_tests
 from src.sandbox.docker_executor import run_pytest_in_docker
@@ -21,6 +22,7 @@ class PipelineReport:
     execution: TestExecutionResult
     analysis: PytestSummary
     diagnosis: FailureDiagnosis
+    security_check: SecurityCheckResult | None = None
     test_plan: TestPlan | None = None
     generated_suite: GeneratedTestSuite | None = None
     generated_tests_enabled: bool = False
@@ -36,11 +38,15 @@ def run_pipeline(
     scan = scan_repository(project_path)
     test_plan: TestPlan | None = None
     generated_suite: GeneratedTestSuite | None = None
+    security_check: SecurityCheckResult | None = None
     execution_project = Path(project_path)
 
     if generate_tests:
         test_plan = plan_tests(project_path, scan)
         generated_suite = generate_pytest_tests_from_plan(test_plan)
+        security_check = check_generated_test_code(generated_suite.content)
+        if not security_check.passed:
+            raise ValueError("Generated tests failed security check.")
         with tempfile.TemporaryDirectory(prefix="testguard-") as temp_dir:
             execution_project = copy_project_with_generated_tests(project_path, temp_dir, generated_suite)
             execution = _run_executor(
@@ -56,6 +62,7 @@ def run_pipeline(
             execution=execution,
             analysis=analysis,
             diagnosis=diagnosis,
+            security_check=security_check,
             test_plan=test_plan,
             generated_suite=generated_suite,
             generated_tests_enabled=True,
@@ -74,6 +81,7 @@ def run_pipeline(
         execution=execution,
         analysis=analysis,
         diagnosis=diagnosis,
+        security_check=security_check,
         test_plan=test_plan,
         generated_tests_enabled=False,
     )
@@ -107,6 +115,7 @@ def format_report(report: PipelineReport) -> str:
         f"Generated Tests: {report.generated_tests_enabled}",
         f"Planned Test Cases: {_planned_test_count(report)}",
         f"Generated Test Cases: {_generated_test_count(report)}",
+        f"Security Check: {_security_check_status(report)}",
         f"Executor: {report.execution.executor}",
         f"Test Result: {status}",
         f"Exit Code: {report.execution.exit_code}",
@@ -152,3 +161,11 @@ def _planned_test_count(report: PipelineReport) -> int:
     if report.test_plan is None:
         return 0
     return report.test_plan.item_count
+
+
+def _security_check_status(report: PipelineReport) -> str:
+    if report.security_check is None:
+        return "not_run"
+    if report.security_check.passed:
+        return "passed"
+    return f"failed ({report.security_check.violation_count} violation(s))"

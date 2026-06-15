@@ -3,6 +3,7 @@ import unittest
 from src.evaluation.benchmark import BenchmarkCase, BenchmarkResult, summarize_results
 from src.agents.failure_diagnoser import FailureDiagnosis
 from src.agents.result_analyzer import PytestSummary
+from src.agents.security_checker import SecurityCheckResult
 from src.sandbox.local_executor import TestExecutionResult
 from src.tools.repo_scanner import RepositoryScanResult
 from src.workflow.pipeline import PipelineReport
@@ -33,6 +34,7 @@ class BenchmarkSummaryTest(unittest.TestCase):
                 key_findings=[],
                 suggestions=["All tests passed."],
             ),
+            security_check=SecurityCheckResult(passed=True, violations=[]),
         )
         result = BenchmarkResult(
             case=BenchmarkCase(name="sample", project_path="examples/sample_python_project"),

@@ -61,6 +61,12 @@ Benchmark Cases -> Pipeline Runs -> Metrics Aggregation -> Benchmark JSON Report
 pytest 输出 + PytestSummary -> Failure Diagnosis -> key findings + suggestions
 ```
 
+第七阶段显式化安全检查：
+
+```text
+Generated Test Code -> Security Checker -> SecurityCheckResult -> PipelineReport
+```
+
 ## 5. 功能需求
 
 ### FR-1 项目扫描
@@ -110,6 +116,10 @@ pytest 输出 + PytestSummary -> Failure Diagnosis -> key findings + suggestions
 ### FR-12 失败诊断与修复建议
 
 系统应在测试失败、执行错误或超时时，提取 pytest 输出中的失败线索，分类失败类型，并给出面向开发者的修复建议。
+
+### FR-13 生成测试安全检查
+
+系统应将生成测试代码的 AST 安全检查显式建模为 Agent 输出，报告是否通过、违规规则、违规内容和所在行号。
 
 ## 6. 非功能需求
 

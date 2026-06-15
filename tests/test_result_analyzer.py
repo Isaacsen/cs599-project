@@ -5,6 +5,7 @@ from pathlib import Path
 
 from src.agents.failure_diagnoser import diagnose_failure
 from src.agents.result_analyzer import analyze_pytest_result
+from src.agents.security_checker import check_generated_test_code
 from src.agents.test_generator import GeneratedTestSuite
 from src.agents.test_planner import plan_tests
 from src.sandbox.local_executor import TestExecutionResult
@@ -63,6 +64,7 @@ class ResultAnalyzerTest(unittest.TestCase):
             execution=execution,
             analysis=analyze_pytest_result(execution),
             diagnosis=diagnose_failure(execution, analyze_pytest_result(execution)),
+            security_check=check_generated_test_code("def test_sample():\n    assert True\n"),
             test_plan=plan_tests(
                 "examples/sample_python_project",
                 scan_repository("examples/sample_python_project"),
@@ -84,6 +86,7 @@ class ResultAnalyzerTest(unittest.TestCase):
         self.assertEqual(2, len(data["generated_suite"]["covered_functions"]))
         self.assertIn("analysis", data)
         self.assertEqual("no_issue", data["diagnosis"]["status"])
+        self.assertTrue(data["security_check"]["passed"])
 
     def test_timeout_conclusion(self) -> None:
         execution = TestExecutionResult(

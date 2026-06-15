@@ -55,6 +55,7 @@ Test files: 1
 Generated Tests: True
 Planned Test Cases: 2
 Generated Test Cases: 2
+Security Check: passed
 Test Result: PASSED
 Executor: docker
 Duration: 0.50s
@@ -141,6 +142,7 @@ Total Duration: 1.00s
 - `analysis: PytestSummary`
 - `test_plan: TestPlan | None`
 - `diagnosis: FailureDiagnosis`
+- `security_check: SecurityCheckResult | None`
 
 ### 2.4 GeneratedTestSuite
 
@@ -198,6 +200,21 @@ Total Duration: 1.00s
 - `failure_types: list[str]`
 - `key_findings: list[str]`
 - `suggestions: list[str]`
+
+### 2.10 SecurityCheckResult
+
+字段：
+
+- `passed: bool`
+- `violations: list[SecurityViolation]`
+
+### 2.11 SecurityViolation
+
+字段：
+
+- `rule: str`
+- `detail: str`
+- `line: int`
 
 ## 3. 后续 HTTP API 规划
 

@@ -8,7 +8,8 @@ flowchart TD
     B --> C{"是否生成测试"}
     C --> D["Test Planner Agent"]
     D --> E["Test Generator Agent"]
-    E --> N["临时测试工作区"]
+    E --> P["Security Checker Agent"]
+    P --> N["临时测试工作区"]
     C --> F{"选择执行后端"}
     N --> F
     F --> G["Local Pytest Executor"]
@@ -95,3 +96,7 @@ python -m src.benchmark --executor docker --output docs/runs/benchmark.json
 ## 第六阶段验收标准
 
 当 pytest 失败或超时时，系统能够在 CLI 和 JSON 报告中输出失败类型、关键线索和修复建议。
+
+## 第七阶段验收标准
+
+生成的 pytest 测试在执行前经过 Security Checker Agent，CLI 和 JSON 报告中能够展示安全检查是否通过。

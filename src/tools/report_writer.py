@@ -14,6 +14,7 @@ def report_to_dict(report: PipelineReport) -> dict[str, Any]:
         "execution": asdict(report.execution),
         "analysis": asdict(report.analysis),
         "diagnosis": asdict(report.diagnosis),
+        "security_check": asdict(report.security_check) if report.security_check else None,
         "test_plan": asdict(report.test_plan) if report.test_plan else None,
         "generated_tests_enabled": report.generated_tests_enabled,
         "generated_suite": asdict(report.generated_suite) if report.generated_suite else None,

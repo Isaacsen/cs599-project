@@ -1,9 +1,9 @@
 from __future__ import annotations
 
-import ast
 from dataclasses import dataclass
 from pathlib import Path
 
+from src.agents.security_checker import assert_generated_test_code_is_safe
 from src.agents.test_planner import TestPlan, TestPlanItem, plan_tests
 from src.tools.repo_scanner import RepositoryScanResult
 
@@ -17,18 +17,6 @@ class GeneratedTestSuite:
     @property
     def test_count(self) -> int:
         return len(self.covered_functions)
-
-
-FORBIDDEN_GENERATED_IMPORTS = {
-    "os",
-    "pathlib",
-    "requests",
-    "shutil",
-    "socket",
-    "subprocess",
-    "sys",
-    "urllib",
-}
 
 
 def generate_pytest_tests(
@@ -87,17 +75,7 @@ def generate_pytest_tests_from_plan(plan: TestPlan) -> GeneratedTestSuite:
 
 
 def validate_generated_test_code(content: str) -> None:
-    tree = ast.parse(content)
-    for node in ast.walk(tree):
-        if isinstance(node, ast.Import):
-            for alias in node.names:
-                root_name = alias.name.split(".", 1)[0]
-                if root_name in FORBIDDEN_GENERATED_IMPORTS:
-                    raise ValueError(f"Generated tests import forbidden module: {root_name}")
-        elif isinstance(node, ast.ImportFrom):
-            root_name = (node.module or "").split(".", 1)[0]
-            if root_name in FORBIDDEN_GENERATED_IMPORTS:
-                raise ValueError(f"Generated tests import forbidden module: {root_name}")
+    assert_generated_test_code_is_safe(content)
 
 
 def _generate_test_case(test_name: str, module_alias: str, item: TestPlanItem) -> list[str]:
