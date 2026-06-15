@@ -26,6 +26,11 @@ def build_parser() -> argparse.ArgumentParser:
         default="testguard-python:latest",
         help="Docker image used when --executor docker is selected.",
     )
+    parser.add_argument(
+        "--generate-tests",
+        action="store_true",
+        help="Generate pytest tests before executing the selected backend.",
+    )
     return parser
 
 
@@ -39,6 +44,7 @@ def main() -> int:
             timeout_seconds=args.timeout,
             executor=args.executor,
             docker_image=args.docker_image,
+            generate_tests=args.generate_tests,
         )
     except Exception as exc:
         print(f"Error: {exc}", file=sys.stderr)

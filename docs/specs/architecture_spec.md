@@ -2,7 +2,7 @@
 
 ## 1. 架构目标
 
-TestGuard Agent 采用分层架构，将代码理解、测试规划、测试生成、隔离执行和结果分析解耦。第一阶段实现仓库扫描与本地测试执行，第二阶段加入 Docker 沙箱执行器。
+TestGuard Agent 采用分层架构，将代码理解、测试规划、测试生成、隔离执行和结果分析解耦。第一阶段实现仓库扫描与本地测试执行，第二阶段加入 Docker 沙箱执行器，第三阶段加入可离线演示的测试生成 Agent。
 
 ## 2. 总体流程
 
@@ -29,6 +29,17 @@ Repo Scanner
 ```text
 Repo Scanner
   -> Docker Sandbox Executor
+  -> Console Report
+```
+
+第三阶段实际流程：
+
+```text
+Repo Scanner
+  -> Rule-based Test Generator Agent
+  -> Generated Test Security Check
+  -> Temporary Test Workspace
+  -> Local / Docker Executor
   -> Console Report
 ```
 
@@ -89,15 +100,38 @@ Repo Scanner
 - 将扫描结果和执行结果合并为报告对象。
 - 为后续 LangGraph 工作流提供替换点。
 
-### 3.6 Agent Modules
+### 3.6 Test Generator Agent
+
+位置：`src/agents/test_generator.py`
+
+职责：
+
+- 使用 Python AST 分析源码文件中的公开函数。
+- 根据函数名称生成基础 pytest 测试。
+- 对生成测试执行 AST 安全校验，阻止危险 import。
+- 返回生成测试文件内容和覆盖函数列表。
+
+当前实现为规则型生成器，后续可替换为 LLM Test Generator Agent。
+
+### 3.7 Test Workspace
+
+位置：`src/tools/test_workspace.py`
+
+职责：
+
+- 将目标项目复制到临时工作区。
+- 写入生成的测试文件。
+- 让本地执行器或 Docker 执行器在临时副本中运行测试，避免修改原始项目。
+
+### 3.8 Agent Modules
 
 位置：`src/agents/`
 
-第一阶段仅保留模块边界。后续计划：
+当前已实现规则型 Test Generator Agent。后续计划：
 
 - Repo Analyzer Agent：理解项目结构和核心模块。
 - Test Planner Agent：生成测试计划。
-- Test Generator Agent：生成 pytest 测试代码。
+- LLM Test Generator Agent：基于规格和源码上下文生成 pytest 测试代码。
 - Result Analyzer Agent：分析失败原因并生成修复建议。
 
 ## 4. 权限隔离设计
@@ -118,6 +152,8 @@ Docker 沙箱执行器采用以下策略：
 ```text
 Project Path
   -> RepositoryScanResult
+  -> GeneratedTestSuite
+  -> Temporary Workspace
   -> TestExecutionResult
   -> PipelineReport
   -> CLI Output / Future JSON Trace

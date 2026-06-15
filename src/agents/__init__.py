@@ -1,1 +1,1 @@
-"""Agent module placeholders for future LLM-powered workflows."""
+"""Agent modules used by TestGuard workflows."""

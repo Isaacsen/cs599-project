@@ -5,7 +5,7 @@
 ### 1.1 执行测试闭环
 
 ```bash
-python -m src.main <project_path> [--timeout SECONDS] [--executor local|docker] [--docker-image IMAGE]
+python -m src.main <project_path> [--timeout SECONDS] [--executor local|docker] [--docker-image IMAGE] [--generate-tests]
 ```
 
 参数：
@@ -14,6 +14,7 @@ python -m src.main <project_path> [--timeout SECONDS] [--executor local|docker] 
 - `--timeout`：测试执行超时时间，默认 30 秒。
 - `--executor`：测试执行后端，默认 `local`，可选 `docker`。
 - `--docker-image`：Docker 执行后端使用的镜像，默认 `testguard-python:latest`。
+- `--generate-tests`：执行前生成 pytest 测试，并在临时项目副本中运行。
 
 示例：
 
@@ -28,6 +29,12 @@ docker build -f Dockerfile.sandbox -t testguard-python .
 python -m src.main examples/sample_python_project --executor docker
 ```
 
+生成测试并使用 Docker 沙箱执行：
+
+```bash
+python -m src.main examples/sample_python_project --generate-tests --executor docker
+```
+
 输出：
 
 ```text
@@ -38,6 +45,8 @@ Language: Python
 Test Framework: pytest
 Source files: 1
 Test files: 1
+Generated Tests: True
+Generated Test Cases: 2
 Test Result: PASSED
 Executor: docker
 Duration: 0.50s
@@ -73,6 +82,16 @@ Duration: 0.50s
 
 - `scan: RepositoryScanResult`
 - `execution: TestExecutionResult`
+- `generated_suite: GeneratedTestSuite | None`
+- `generated_tests_enabled: bool`
+
+### 2.4 GeneratedTestSuite
+
+字段：
+
+- `test_file_name: str`
+- `content: str`
+- `covered_functions: list[str]`
 
 ## 3. 后续 HTTP API 规划
 
