@@ -127,8 +127,15 @@ Benchmark 会运行默认样例项目，统计用例通过率、pytest 用例数
 - [x] Failure diagnosis suggestions
 - [x] LLM prompt export
 - [x] Benchmark evaluation
+- [x] Demo guide and artifacts index
 - [ ] LLM test generation
 - [ ] Final report
+
+## Demo 与交付物
+
+- Demo 指南：`docs/demo_guide.md`
+- 交付物索引：`docs/artifacts.md`
+- 一键演示脚本：`scripts/run_demo.ps1`
 
 ## 引用与说明
 

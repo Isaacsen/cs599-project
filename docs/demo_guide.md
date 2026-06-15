@@ -1,0 +1,97 @@
+# TestGuard Agent Demo Guide
+
+## Demo 目标
+
+本 Demo 展示 TestGuard Agent 的完整闭环：
+
+```text
+Python 项目
+  -> Repo Scanner
+  -> Test Planner Agent
+  -> Test Generator Agent
+  -> Security Checker Agent
+  -> Docker Sandbox Executor
+  -> Result Analyzer Agent
+  -> Failure Diagnoser Agent
+  -> JSON Report / Benchmark Report / LLM Prompt
+```
+
+## 准备步骤
+
+1. 构建 Docker 沙箱镜像：
+
+```bash
+docker build -f Dockerfile.sandbox -t testguard-python .
+```
+
+2. 运行单元测试：
+
+```bash
+python -m unittest discover -s tests
+```
+
+3. 运行语法编译检查：
+
+```bash
+python -m compileall src tests examples
+```
+
+## 核心演示命令
+
+### 1. 自动生成测试并在 Docker 沙箱执行
+
+```bash
+python -m src.main examples/sample_python_project --generate-tests --executor docker --report-json docs/runs/sample_run.json
+```
+
+演示要点：
+
+- 自动识别 `calculator.add` 和 `calculator.divide`。
+- 生成 2 个测试计划项。
+- 生成 2 个 pytest 测试。
+- Security Checker 显示 `passed`。
+- Docker 沙箱执行结果为 `5 passed`。
+- JSON 报告写入 `docs/runs/sample_run.json`。
+
+### 2. 导出 LLM Prompt
+
+```bash
+python -m src.main examples/sample_python_project --generate-tests --executor docker --export-llm-prompt docs/runs/llm_prompt.json
+```
+
+演示要点：
+
+- Prompt 包含 system 安全约束。
+- Prompt 包含 TestPlan 和源码上下文。
+- Prompt 工件不包含 API Key 明文，只记录 `api_key_set`。
+
+### 3. 运行 Benchmark
+
+```bash
+python -m src.benchmark --executor docker --output docs/runs/benchmark.json
+```
+
+演示要点：
+
+- 输出总用例数、通过用例数、通过率。
+- 输出 pytest 用例数量、规划测试数量、生成测试数量。
+- Benchmark JSON 可作为最终报告的测试与评估证据。
+
+## 5 分钟展示建议
+
+1. 30 秒：介绍问题，说明人工写测试成本高，LLM 生成测试需要权限隔离。
+2. 60 秒：展示架构图和 Agent 流程。
+3. 90 秒：运行 Docker 沙箱 Demo。
+4. 60 秒：打开 `sample_run.json`，展示测试计划、安全检查、诊断和结果分析。
+5. 40 秒：运行 Benchmark 或展示 `benchmark.json`。
+6. 20 秒：展示 `llm_prompt.json`，说明后续可接入 DeepSeek/OpenAI/Ollama。
+
+## 兜底方案
+
+如果现场 Docker 不可用，可以展示已提交的 JSON 工件：
+
+- `docs/runs/sample_run.json`
+- `docs/runs/benchmark.json`
+- `docs/runs/llm_prompt.json`
+
+这些文件记录了完整 Demo 的可复现输出。
