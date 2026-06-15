@@ -15,6 +15,7 @@ class TestExecutionResult:
     stderr: str
     duration_seconds: float
     timed_out: bool
+    executor: str = "local"
 
 
 def run_pytest(project_path: str | Path, timeout_seconds: int = 30) -> TestExecutionResult:
@@ -41,6 +42,7 @@ def run_pytest(project_path: str | Path, timeout_seconds: int = 30) -> TestExecu
             stderr=exc.stderr or f"pytest timed out after {timeout_seconds} seconds",
             duration_seconds=duration,
             timed_out=True,
+            executor="local",
         )
 
     duration = time.perf_counter() - started_at
@@ -51,4 +53,5 @@ def run_pytest(project_path: str | Path, timeout_seconds: int = 30) -> TestExecu
         stderr=completed.stderr,
         duration_seconds=duration,
         timed_out=False,
+        executor="local",
     )

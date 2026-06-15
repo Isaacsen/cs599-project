@@ -5,9 +5,14 @@
 ```mermaid
 flowchart TD
     A["用户输入 Python 项目路径"] --> B["Repo Scanner"]
-    B --> C["Local Pytest Executor"]
-    C --> D["Pipeline Report"]
-    D --> E["CLI 输出"]
+    B --> C{"选择执行后端"}
+    C --> D["Local Pytest Executor"]
+    C --> E["Docker Sandbox Executor"]
+    E --> F["权限隔离策略"]
+    F --> G["网络禁用 / 只读挂载 / 资源限制"]
+    D --> H["Pipeline Report"]
+    G --> H
+    H --> I["CLI 输出"]
 ```
 
 ## 目标阶段架构

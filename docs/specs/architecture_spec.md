@@ -2,7 +2,7 @@
 
 ## 1. 架构目标
 
-TestGuard Agent 采用分层架构，将代码理解、测试规划、测试生成、隔离执行和结果分析解耦。第一阶段先实现仓库扫描与本地测试执行，后续将本地执行器替换或扩展为 Docker 沙箱执行器。
+TestGuard Agent 采用分层架构，将代码理解、测试规划、测试生成、隔离执行和结果分析解耦。第一阶段实现仓库扫描与本地测试执行，第二阶段加入 Docker 沙箱执行器。
 
 ## 2. 总体流程
 
@@ -21,6 +21,14 @@ Repo Scanner
 ```text
 Repo Scanner
   -> Local Pytest Executor
+  -> Console Report
+```
+
+第二阶段实际流程：
+
+```text
+Repo Scanner
+  -> Docker Sandbox Executor
   -> Console Report
 ```
 
@@ -49,9 +57,29 @@ Repo Scanner
 - 捕获 stdout、stderr、退出码和耗时。
 - 返回结构化执行结果。
 
-第一阶段命名为 `sandbox` 是为了保持模块边界稳定。第二阶段会加入 `docker_executor.py`，实现真正的权限隔离。
+第一阶段命名为 `sandbox` 是为了保持模块边界稳定。第二阶段已加入 `docker_executor.py`，实现 Docker 权限隔离。
 
-### 3.3 Workflow Pipeline
+### 3.3 Docker Executor
+
+位置：`src/sandbox/docker_executor.py`
+
+职责：
+
+- 使用 `docker run` 在容器中执行 pytest。
+- 将目标项目只读挂载到 `/workspace`。
+- 禁用网络并限制 CPU、内存、进程数和执行时间。
+- 返回与本地执行器一致的结构化执行结果。
+
+### 3.4 Sandbox Policy
+
+位置：`src/sandbox/policy.py`
+
+职责：
+
+- 集中描述 Docker 沙箱策略。
+- 管理镜像名、网络开关、挂载模式、资源限制和超时时间。
+
+### 3.5 Workflow Pipeline
 
 位置：`src/workflow/pipeline.py`
 
@@ -61,7 +89,7 @@ Repo Scanner
 - 将扫描结果和执行结果合并为报告对象。
 - 为后续 LangGraph 工作流提供替换点。
 
-### 3.4 Agent Modules
+### 3.6 Agent Modules
 
 位置：`src/agents/`
 
@@ -74,7 +102,7 @@ Repo Scanner
 
 ## 4. 权限隔离设计
 
-后续 Docker 沙箱执行器将采用以下策略：
+Docker 沙箱执行器采用以下策略：
 
 - 源码目录只读挂载。
 - 生成测试目录单独可写。

@@ -3,7 +3,9 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 
+from src.sandbox.docker_executor import run_pytest_in_docker
 from src.sandbox.local_executor import TestExecutionResult, run_pytest
+from src.sandbox.policy import SandboxPolicy
 from src.tools.repo_scanner import RepositoryScanResult, scan_repository
 
 
@@ -13,9 +15,20 @@ class PipelineReport:
     execution: TestExecutionResult
 
 
-def run_pipeline(project_path: str | Path, timeout_seconds: int = 30) -> PipelineReport:
+def run_pipeline(
+    project_path: str | Path,
+    timeout_seconds: int = 30,
+    executor: str = "local",
+    docker_image: str = "testguard-python:latest",
+) -> PipelineReport:
     scan = scan_repository(project_path)
-    execution = run_pytest(project_path, timeout_seconds=timeout_seconds)
+    if executor == "local":
+        execution = run_pytest(project_path, timeout_seconds=timeout_seconds)
+    elif executor == "docker":
+        policy = SandboxPolicy(image=docker_image, timeout_seconds=timeout_seconds)
+        execution = run_pytest_in_docker(project_path, policy=policy)
+    else:
+        raise ValueError(f"Unsupported executor: {executor}")
     return PipelineReport(scan=scan, execution=execution)
 
 
@@ -30,6 +43,7 @@ def format_report(report: PipelineReport) -> str:
         f"Source files: {len(report.scan.source_files)}",
         f"Test files: {len(report.scan.test_files)}",
         "",
+        f"Executor: {report.execution.executor}",
         f"Test Result: {status}",
         f"Exit Code: {report.execution.exit_code}",
         f"Timed Out: {report.execution.timed_out}",

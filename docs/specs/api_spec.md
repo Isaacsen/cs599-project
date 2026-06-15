@@ -5,18 +5,27 @@
 ### 1.1 执行测试闭环
 
 ```bash
-python -m src.main <project_path> [--timeout SECONDS]
+python -m src.main <project_path> [--timeout SECONDS] [--executor local|docker] [--docker-image IMAGE]
 ```
 
 参数：
 
 - `project_path`：待扫描和测试的 Python 项目路径。
 - `--timeout`：测试执行超时时间，默认 30 秒。
+- `--executor`：测试执行后端，默认 `local`，可选 `docker`。
+- `--docker-image`：Docker 执行后端使用的镜像，默认 `testguard-python:latest`。
 
 示例：
 
 ```bash
 python -m src.main examples/sample_python_project --timeout 30
+```
+
+Docker 沙箱执行示例：
+
+```bash
+docker build -f Dockerfile.sandbox -t testguard-python .
+python -m src.main examples/sample_python_project --executor docker
 ```
 
 输出：
@@ -30,6 +39,7 @@ Test Framework: pytest
 Source files: 1
 Test files: 1
 Test Result: PASSED
+Executor: docker
 Duration: 0.50s
 ```
 
@@ -55,6 +65,7 @@ Duration: 0.50s
 - `stderr: str`
 - `duration_seconds: float`
 - `timed_out: bool`
+- `executor: str`
 
 ### 2.3 PipelineReport
 

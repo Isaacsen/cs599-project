@@ -15,6 +15,17 @@ def build_parser() -> argparse.ArgumentParser:
         default=30,
         help="Timeout in seconds for pytest execution.",
     )
+    parser.add_argument(
+        "--executor",
+        choices=("local", "docker"),
+        default="local",
+        help="Execution backend for pytest.",
+    )
+    parser.add_argument(
+        "--docker-image",
+        default="testguard-python:latest",
+        help="Docker image used when --executor docker is selected.",
+    )
     return parser
 
 
@@ -23,7 +34,12 @@ def main() -> int:
     args = parser.parse_args()
 
     try:
-        report = run_pipeline(args.project_path, timeout_seconds=args.timeout)
+        report = run_pipeline(
+            args.project_path,
+            timeout_seconds=args.timeout,
+            executor=args.executor,
+            docker_image=args.docker_image,
+        )
     except Exception as exc:
         print(f"Error: {exc}", file=sys.stderr)
         return 2
