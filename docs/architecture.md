@@ -1,112 +1,203 @@
-# TestGuard Agent Architecture
+# TestGuard Software Engineer Agent Architecture
 
-## 当前阶段架构
+## 1. 新项目定位
 
-```mermaid
-flowchart TD
-    A["用户输入 Python 项目路径"] --> B["Repo Scanner"]
-    B --> C{"是否生成测试"}
-    C --> D["Test Planner Agent"]
-    D --> E["Test Generator Agent"]
-    E --> P["Security Checker Agent"]
-    P --> N["临时测试工作区"]
-    C --> F{"选择执行后端"}
-    N --> F
-    F --> G["Local Pytest Executor"]
-    F --> H["Docker Sandbox Executor"]
-    H --> I["权限隔离策略"]
-    I --> J["网络禁用 / 只读挂载 / 资源限制"]
-    G --> K["Result Analyzer Agent"]
-    J --> K
-    K --> O["Failure Diagnoser Agent"]
-    O --> L["Pipeline Report"]
-    L --> M["CLI 输出 / JSON Trace"]
-```
+TestGuard 当前定位为 **面向 Python 项目的软件工程师 Agent 与权限隔离执行平台**。
 
-## 目标阶段架构
+系统不再只是“自动生成测试并执行”的单一工具，而是围绕软件工程师日常工作流进行 Agent 化编排：
+
+- 代码审查：发现危险调用、疑似硬编码密钥、宽泛异常、测试缺失和边界风险。
+- 自动修 Bug：默认 dry-run 生成修复计划，用户确认后才写回。
+- 生成单测：为缺失覆盖的公开函数生成 pytest。
+- LLM 测试生成：接入 DashScope / DeepSeek / OpenAI-compatible 模型，离线 mock 可兜底演示。
+- 权限隔离执行：通过 Docker 沙箱、临时工作区、只读挂载、禁用网络和资源限制降低执行风险。
+
+该设计对应课程方向一“Agentic AI 原生开发”，覆盖 SDD、工具调用、状态管理、多步骤推理、可观测性与评估、Docker 沙箱等课程要求。
+
+## 2. 总体架构
 
 ```mermaid
 flowchart TD
-    A["用户提交代码仓库"] --> B["Repo Analyzer Agent"]
-    B --> C["Test Planner Agent"]
-    C --> D["Test Generator Agent"]
-    D --> E["Security Checker"]
-    E --> F["Sandbox Executor"]
-    F --> G["Result Analyzer Agent"]
-    G --> H["测试报告 / 失败诊断 / 修复建议"]
+    U["用户 / Demo CLI"] --> CLI["CLI 入口层"]
 
-    B --> I["代码索引"]
-    F --> J["Docker 权限隔离层"]
-    J --> K["只读源码挂载"]
-    J --> L["网络禁用"]
-    J --> M["CPU / 内存 / 时间限制"]
+    CLI --> SE["Software Engineer Agent"]
+    CLI --> TG["TestGuard Pipeline"]
+    CLI --> LLMG["LLM Test Generator Agent"]
+    CLI --> BM["Benchmark Evaluator"]
+
+    SE --> CR["Code Reviewer Agent"]
+    SE --> BF["Bug Fixer Agent"]
+    SE --> UT["Unit Test Writer Agent"]
+
+    TG --> RP["Repo Scanner"]
+    TG --> TP["Test Planner Agent"]
+    TG --> RTG["Rule-based Test Generator Agent"]
+    TG --> SC["Security Checker Agent"]
+    TG --> WS["Temporary Test Workspace"]
+    TG --> SX["Sandbox Executor"]
+    TG --> RA["Result Analyzer Agent"]
+    TG --> FD["Failure Diagnoser Agent"]
+
+    LLMG --> TP
+    LLMG --> PB["LLM Prompt Builder"]
+    LLMG --> LC["OpenAI-compatible LLM Client"]
+    LLMG --> SC
+
+    CR --> RP
+    BF --> RP
+    UT --> RP
+    UT --> TP
+    UT --> SC
+
+    SX --> LE["Local Executor"]
+    SX --> DE["Docker Executor"]
+    DE --> ISO["Permission Isolation Layer"]
+
+    ISO --> I1["Read-only source mount"]
+    ISO --> I2["Network disabled"]
+    ISO --> I3["CPU / Memory / PID limits"]
+    ISO --> I4["Timeout control"]
+    ISO --> I5["No new privileges"]
+
+    CR --> OBS["JSON Artifacts / Observability"]
+    BF --> OBS
+    UT --> OBS
+    LLMG --> OBS
+    RA --> OBS
+    FD --> OBS
+    BM --> OBS
 ```
 
-## 第一阶段验收标准
+## 3. 分层设计
 
-运行以下命令：
+### 3.1 CLI 入口层
+
+面向课程 Demo 和评审者，提供可重复运行的命令：
+
+- `src.main`：测试生成、沙箱执行、结果分析主闭环。
+- `src.review`：代码审查。
+- `src.fix`：自动修 Bug 计划。
+- `src.unit_tests`：缺失覆盖单测生成。
+- `src.engineer`：统一软件工程师 Agent。
+- `src.llm_tests`：LLM 测试生成。
+- `src.benchmark`：评估与指标汇总。
+
+### 3.2 Agent 编排层
+
+核心是 `Software Engineer Agent`：
+
+```text
+RepositoryScanResult
+  -> Code Reviewer Agent
+  -> Bug Fixer Agent
+  -> Unit Test Writer Agent
+  -> SoftwareEngineerReport
+```
+
+该层体现 Agentic AI 的多步骤推理与状态管理。每一步都产出结构化状态对象，后续步骤可以继续消费，最终合并为统一 JSON 报告。
+
+### 3.3 工具调用层
+
+系统中的工具均保持小而明确的边界：
+
+- `repo_scanner`：扫描 Python 项目。
+- `test_workspace`：创建临时测试工作区。
+- `report_writer` / `review_writer` / `fix_writer` / `unit_test_writer` / `llm_test_writer`：输出结构化工件。
+- `prompt_builder`：将 TestPlan 和源码上下文转为 LLM Prompt。
+- `llm.client`：通过 OpenAI-compatible 接口调用 DashScope、DeepSeek 等模型。
+
+这些模块可视为 Function Calling / Tool Use 的本地实现。
+
+### 3.4 权限隔离层
+
+权限隔离由三道闸组成：
+
+1. 生成代码执行前必须经过 Security Checker。
+2. 默认 dry-run，不直接写回用户项目；写回必须显式传入 `--apply` / `--apply-fixes` / `--apply-tests`。
+3. 测试执行可进入 Docker 沙箱，限制网络、文件系统和资源。
+
+```mermaid
+flowchart LR
+    A["Generated / LLM Code"] --> B["Security Checker"]
+    B --> C{"Passed?"}
+    C -->|No| D["Block and report violations"]
+    C -->|Yes| E["Temporary Workspace"]
+    E --> F["Docker Sandbox"]
+    F --> G["Read-only source + no network + resource limits"]
+    G --> H["Pytest Result"]
+```
+
+### 3.5 可观测与评估层
+
+所有关键 Agent 都输出 JSON 工件：
+
+- `sample_run.json`
+- `benchmark.json`
+- `llm_prompt.json`
+- `llm_tests.json`
+- `review.json`
+- `fix_plan.json`
+- `unit_tests.json`
+- `software_engineer.json`
+
+这些工件支持课程报告中的测试评估、Demo 兜底和可复现审计。
+
+## 4. 数据流
+
+```mermaid
+sequenceDiagram
+    participant User
+    participant CLI
+    participant SE as Software Engineer Agent
+    participant Review as Code Reviewer
+    participant Fix as Bug Fixer
+    participant Unit as Unit Test Writer
+    participant LLM as LLM Test Generator
+    participant Sandbox as Sandbox Executor
+    participant Obs as JSON Artifacts
+
+    User->>CLI: python -m src.engineer project
+    CLI->>SE: run dry-run workflow
+    SE->>Review: analyze repository
+    Review-->>SE: ReviewReport
+    SE->>Fix: generate safe fix plan
+    Fix-->>SE: FixPlan
+    SE->>Unit: generate missing unit tests
+    Unit-->>SE: UnitTestReport
+    SE-->>Obs: software_engineer.json
+
+    User->>CLI: python -m src.llm_tests project
+    CLI->>LLM: build prompt + call LLM/mock
+    LLM-->>Obs: llm_tests.json
+
+    User->>CLI: python -m src.main --generate-tests --executor docker
+    CLI->>Sandbox: execute generated tests
+    Sandbox-->>Obs: sample_run.json
+```
+
+## 5. 课程要求映射
+
+| 课程要求 | 架构对应 |
+| --- | --- |
+| SDD 规格驱动开发 | `docs/specs/product_spec.md`、`architecture_spec.md`、`api_spec.md` |
+| 工具使用 / Function Calling | Repo Scanner、Security Checker、Docker Executor、LLM Client、Report Writers |
+| 状态管理与多步骤推理 | Software Engineer Agent 串联 Review/Fix/Unit Test 三阶段状态 |
+| 多智能体协作 | Code Reviewer、Bug Fixer、Unit Test Writer、LLM Test Generator 分工协作 |
+| 可观测性与评估 | JSON artifacts、Benchmark、单元测试、Demo Guide |
+| 权限隔离 | Docker 沙箱、Security Checker、dry-run apply gate、环境变量密钥管理 |
+
+## 6. 阶段验收命令
 
 ```bash
-python -m src.main examples/sample_python_project
+python -m unittest discover -s tests
+python -m compileall src tests examples
+python -m src.engineer examples/review_target --output docs/runs/software_engineer.json
+python -m src.llm_tests examples/sample_python_project --mock-response examples/llm_response/pytest_response.md --output docs/runs/llm_tests.json
 ```
 
-系统能够完成项目扫描、pytest 执行和命令行报告输出。
-
-## 第二阶段验收标准
-
-运行以下命令：
+如需展示完整权限隔离闭环：
 
 ```bash
 docker build -f Dockerfile.sandbox -t testguard-python .
-python -m src.main examples/sample_python_project --executor docker
-```
-
-系统能够在 Docker 沙箱中完成项目扫描、pytest 执行和命令行报告输出。
-
-## 第三阶段验收标准
-
-运行以下命令：
-
-```bash
-python -m src.main examples/sample_python_project --generate-tests --executor docker
-```
-
-系统能够生成结构化测试计划和 pytest 测试，在临时工作区中执行，并在报告中展示规划与生成测试数量。
-
-## 第四阶段验收标准
-
-运行以下命令：
-
-```bash
 python -m src.main examples/sample_python_project --generate-tests --executor docker --report-json docs/runs/sample_run.json
 ```
-
-系统能够解析 pytest 汇总结果，并输出包含扫描、执行、分析和生成测试信息的 JSON 报告。
-
-## 第五阶段验收标准
-
-运行以下命令：
-
-```bash
-python -m src.benchmark --executor docker --output docs/runs/benchmark.json
-```
-
-系统能够批量运行评估用例，并输出包含通过率、pytest 用例数量、规划测试数量、生成测试数量和总耗时的 Benchmark JSON 报告。
-
-## 第六阶段验收标准
-
-当 pytest 失败或超时时，系统能够在 CLI 和 JSON 报告中输出失败类型、关键线索和修复建议。
-
-## 第七阶段验收标准
-
-生成的 pytest 测试在执行前经过 Security Checker Agent，CLI 和 JSON 报告中能够展示安全检查是否通过。
-
-## 第八阶段验收标准
-
-运行以下命令：
-
-```bash
-python -m src.main examples/sample_python_project --generate-tests --export-llm-prompt docs/runs/llm_prompt.json
-```
-
-系统能够基于 TestPlan 和源码上下文导出 LLM 测试生成 Prompt，且 Prompt 工件不包含 API Key 明文。

@@ -193,7 +193,7 @@ Repo Scanner
 - 对生成测试执行 AST 安全校验，阻止危险 import。
 - 返回生成测试文件内容和覆盖函数列表。
 
-当前实现为规则型生成器，后续可替换为 LLM Test Generator Agent。
+当前保留规则型生成器作为稳定离线兜底，同时提供 LLM Test Generator Agent 作为可插拔增强路径。
 
 ### 3.8 Test Workspace
 
@@ -353,12 +353,12 @@ Repo Scanner
 
 位置：`src/agents/`
 
-当前已实现规则型 Test Generator Agent。后续计划：
+当前已实现规则型 Test Generator Agent、LLM Test Generator Agent、Code Reviewer Agent、Bug Fixer Agent、Unit Test Writer Agent 和 Software Engineer Agent。后续计划：
 
-- Repo Analyzer Agent：理解项目结构和核心模块。
-- Test Planner Agent：生成测试计划。
-- LLM Test Generator Agent：基于规格和源码上下文生成 pytest 测试代码。
-- Result Analyzer Agent：分析失败原因并生成修复建议。
+- Codebase RAG Agent：增强跨文件依赖理解和上下文检索。
+- Coverage Feedback Agent：根据覆盖率报告反向补齐测试。
+- Patch Validation Agent：对自动修复后的 diff 进行二次验证。
+- Multi-project Benchmark Agent：扩展多项目、多 Bug 类型评估集。
 
 ## 4. 权限隔离设计
 
