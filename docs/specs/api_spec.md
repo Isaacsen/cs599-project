@@ -172,6 +172,39 @@ Edits: 6
 Files Changed: 1
 ```
 
+### 1.5 生成缺失覆盖单元测试
+
+```bash
+python -m src.unit_tests <project_path> [--output PATH] [--test-file PATH] [--max-functions N] [--apply]
+```
+
+参数：
+
+- `project_path`：待分析的 Python 项目路径。
+- `--output`：单测生成 JSON 输出路径，默认 `docs/runs/unit_tests.json`。
+- `--test-file`：启用 `--apply` 时写入的项目内测试文件路径，默认 `tests/test_testguard_generated.py`。
+- `--max-functions`：最多考虑的公开函数数量，默认 8。
+- `--apply`：可选开关，启用后将生成的 pytest 文件写入目标项目；不传入时只生成 dry-run 报告。
+
+示例：
+
+```bash
+python -m src.unit_tests examples/review_target --output docs/runs/unit_tests.json
+```
+
+输出：
+
+```text
+[TestGuard Unit Test Writer]
+
+Project: examples/review_target
+Applied: False
+Test File: tests/test_testguard_generated.py
+Planned Test Cases: 3
+Generated Test Cases: 3
+Security Check: passed
+```
+
 ## 2. 内部数据结构
 
 ### 2.1 RepositoryScanResult
@@ -337,6 +370,22 @@ Files Changed: 1
 - `description: str`
 - `before: str`
 - `after: str`
+
+### 2.17 UnitTestReport
+
+字段：
+
+- `project_path: str`
+- `applied: bool`
+- `test_file_path: str`
+- `test_plan: TestPlan`
+- `suite: GeneratedTestSuite`
+- `security_check: SecurityCheckResult`
+
+派生统计：
+
+- `planned_test_count: int`
+- `generated_test_count: int`
 
 ## 3. 后续 HTTP API 规划
 

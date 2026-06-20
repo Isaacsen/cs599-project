@@ -19,6 +19,7 @@
 - `docs/runs/llm_prompt.json`：LLM 测试生成 Prompt 工件。
 - `docs/runs/review.json`：Code Reviewer Agent 审查报告。
 - `docs/runs/fix_plan.json`：Bug Fixer Agent dry-run 修复计划。
+- `docs/runs/unit_tests.json`：Unit Test Writer Agent dry-run 单测生成报告。
 
 ## Source Code
 
@@ -26,6 +27,7 @@
 - `src/benchmark.py`：Benchmark 评估 CLI。
 - `src/review.py`：代码审查 Agent CLI。
 - `src/fix.py`：自动修 Bug Agent CLI。
+- `src/unit_tests.py`：缺失覆盖单测生成 Agent CLI。
 - `src/agents/test_planner.py`：测试规划 Agent。
 - `src/agents/test_generator.py`：测试生成 Agent。
 - `src/agents/security_checker.py`：生成测试安全检查 Agent。
@@ -33,13 +35,14 @@
 - `src/agents/failure_diagnoser.py`：失败诊断与修复建议 Agent。
 - `src/agents/code_reviewer.py`：代码审查 Agent。
 - `src/agents/bug_fixer.py`：自动修 Bug Agent。
+- `src/agents/unit_test_writer.py`：缺失覆盖单测生成 Agent。
 - `src/sandbox/docker_executor.py`：Docker 沙箱执行器。
 - `src/evaluation/benchmark.py`：Benchmark 汇总逻辑。
 - `src/llm/prompt_builder.py`：LLM Prompt 构建器。
 
 ## Tests
 
-- `tests/`：单元测试，覆盖测试规划、测试生成、安全检查、结果分析、失败诊断、Benchmark、LLM Prompt 构建、代码审查和自动修 Bug。
+- `tests/`：单元测试，覆盖测试规划、测试生成、安全检查、结果分析、失败诊断、Benchmark、LLM Prompt 构建、代码审查、自动修 Bug 和缺失覆盖单测生成。
 
 ## Demo Script
 

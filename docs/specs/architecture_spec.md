@@ -2,7 +2,7 @@
 
 ## 1. 架构目标
 
-TestGuard Agent 采用分层架构，将代码理解、测试规划、测试生成、隔离执行、结果分析、代码审查和自动修 Bug 解耦。第一阶段实现仓库扫描与本地测试执行，第二阶段加入 Docker 沙箱执行器，第三阶段加入可离线演示的测试规划与生成 Agent，第四阶段加入结果分析与 JSON 运行报告，第五阶段加入 Benchmark 评估，第六阶段加入失败诊断与修复建议，第七阶段显式化生成测试安全检查，第八阶段加入 LLM Prompt 导出，第九阶段加入代码审查 Agent，第十阶段加入自动修 Bug Agent。
+TestGuard Agent 采用分层架构，将代码理解、测试规划、测试生成、隔离执行、结果分析、代码审查、自动修 Bug 和单测生成解耦。第一阶段实现仓库扫描与本地测试执行，第二阶段加入 Docker 沙箱执行器，第三阶段加入可离线演示的测试规划与生成 Agent，第四阶段加入结果分析与 JSON 运行报告，第五阶段加入 Benchmark 评估，第六阶段加入失败诊断与修复建议，第七阶段显式化生成测试安全检查，第八阶段加入 LLM Prompt 导出，第九阶段加入代码审查 Agent，第十阶段加入自动修 Bug Agent，第十一阶段加入缺失覆盖单测生成 Agent。
 
 ## 2. 总体流程
 
@@ -81,6 +81,16 @@ Repo Scanner
   -> Bug Fixer Agent
   -> Fix Plan Writer
   -> Optional Source Apply
+```
+
+第十一阶段缺失覆盖单测生成流程：
+
+```text
+Repo Scanner
+  -> Unit Test Writer Agent
+  -> Security Checker
+  -> Unit Test Report Writer
+  -> Optional Test File Apply
 ```
 
 ## 3. 模块设计
@@ -272,7 +282,18 @@ Repo Scanner
 - 在用户显式启用 `--apply` 时写回目标文件。
 - 当前支持 `eval` 替换、疑似密钥环境变量化、宽泛异常收窄和除零保护。
 
-### 3.18 Future Agent Modules
+### 3.18 Unit Test Writer Agent
+
+位置：`src/agents/unit_test_writer.py`
+
+职责：
+
+- 复用 Test Planner 和 Test Generator 生成 pytest 内容。
+- 对比现有测试文本，跳过已覆盖的公开函数。
+- 复用 Security Checker 校验生成测试代码。
+- 默认 dry-run 输出 JSON 报告，`--apply` 时写入目标项目测试文件。
+
+### 3.19 Future Agent Modules
 
 位置：`src/agents/`
 
@@ -339,6 +360,15 @@ RepositoryScanResult
   -> FixPlan
   -> Fix Plan JSON Artifact
   -> Optional Source Apply
+
+Unit Test Writer Flow:
+
+RepositoryScanResult
+  -> Existing Test Text
+  -> Unit Test Writer Agent
+  -> SecurityCheckResult
+  -> Unit Test JSON Artifact
+  -> Optional Test File Apply
 ```
 
 ## 6. 可观测性
@@ -359,6 +389,7 @@ RepositoryScanResult
 - Benchmark 汇总指标。
 - Code Review JSON 工件。
 - Bug Fix Plan JSON 工件。
+- Unit Test Writer JSON 工件。
 
 后续将扩展为：
 
