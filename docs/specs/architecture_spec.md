@@ -2,7 +2,7 @@
 
 ## 1. 架构目标
 
-TestGuard Agent 采用分层架构，将代码理解、测试规划、测试生成、隔离执行、结果分析、代码审查、自动修 Bug、单测生成和软件工程师编排解耦。第一阶段实现仓库扫描与本地测试执行，第二阶段加入 Docker 沙箱执行器，第三阶段加入可离线演示的测试规划与生成 Agent，第四阶段加入结果分析与 JSON 运行报告，第五阶段加入 Benchmark 评估，第六阶段加入失败诊断与修复建议，第七阶段显式化生成测试安全检查，第八阶段加入 LLM Prompt 导出，第九阶段加入代码审查 Agent，第十阶段加入自动修 Bug Agent，第十一阶段加入缺失覆盖单测生成 Agent，第十二阶段加入软件工程师 Agent 编排入口。
+TestGuard Agent 采用分层架构，将代码理解、测试规划、测试生成、隔离执行、结果分析、代码审查、自动修 Bug、单测生成、软件工程师编排和 LLM 生成解耦。第一阶段实现仓库扫描与本地测试执行，第二阶段加入 Docker 沙箱执行器，第三阶段加入可离线演示的测试规划与生成 Agent，第四阶段加入结果分析与 JSON 运行报告，第五阶段加入 Benchmark 评估，第六阶段加入失败诊断与修复建议，第七阶段显式化生成测试安全检查，第八阶段加入 LLM Prompt 导出，第九阶段加入代码审查 Agent，第十阶段加入自动修 Bug Agent，第十一阶段加入缺失覆盖单测生成 Agent，第十二阶段加入软件工程师 Agent 编排入口，第十三阶段加入 LLM 测试生成 Agent。
 
 ## 2. 总体流程
 
@@ -101,6 +101,17 @@ Repo Scanner
   -> Bug Fixer Agent
   -> Unit Test Writer Agent
   -> Software Engineer Report Writer
+```
+
+第十三阶段 LLM 测试生成流程：
+
+```text
+Repo Scanner
+  -> Test Planner Agent
+  -> LLM Prompt Builder
+  -> OpenAI-compatible LLM Client
+  -> Security Checker
+  -> LLM Test Report Writer
 ```
 
 ## 3. 模块设计
@@ -269,8 +280,20 @@ Repo Scanner
 
 - 从环境变量读取 LLM provider、model 和 API Key 是否存在。
 - 只记录 `api_key_set` 布尔值，不写出 API Key 明文。
+- 支持 `LLM_BASE_URL` 覆盖 OpenAI-compatible 网关地址。
 
-### 3.16 Code Reviewer Agent
+### 3.16 LLM Client
+
+位置：`src/llm/client.py`
+
+职责：
+
+- 使用标准库调用 OpenAI-compatible Chat Completions 接口。
+- 默认支持 DashScope、DeepSeek、OpenAI 和 Ollama 风格 base URL。
+- 仅在请求头中使用 API Key，不写出 API Key 明文。
+- 提供 `StaticLLMClient` 支持离线 mock response 演示。
+
+### 3.17 Code Reviewer Agent
 
 位置：`src/agents/code_reviewer.py`
 
@@ -281,7 +304,7 @@ Repo Scanner
 - 发现疑似硬编码密钥、宽泛异常处理、缺失测试覆盖和除零边界风险。
 - 输出 `ReviewFinding` 列表，供 CLI 和 JSON 报告消费。
 
-### 3.17 Bug Fixer Agent
+### 3.18 Bug Fixer Agent
 
 位置：`src/agents/bug_fixer.py`
 
@@ -292,7 +315,7 @@ Repo Scanner
 - 在用户显式启用 `--apply` 时写回目标文件。
 - 当前支持 `eval` 替换、疑似密钥环境变量化、宽泛异常收窄和除零保护。
 
-### 3.18 Unit Test Writer Agent
+### 3.19 Unit Test Writer Agent
 
 位置：`src/agents/unit_test_writer.py`
 
@@ -303,7 +326,7 @@ Repo Scanner
 - 复用 Security Checker 校验生成测试代码。
 - 默认 dry-run 输出 JSON 报告，`--apply` 时写入目标项目测试文件。
 
-### 3.19 Software Engineer Agent
+### 3.20 Software Engineer Agent
 
 位置：`src/agents/software_engineer.py`
 
@@ -314,7 +337,19 @@ Repo Scanner
 - 将 `ReviewReport`、`FixPlan` 和 `UnitTestReport` 汇总为统一报告。
 - 为课程演示提供一个完整的软件工程师 Agent 入口。
 
-### 3.20 Future Agent Modules
+### 3.21 LLM Test Generator Agent
+
+位置：`src/agents/llm_test_generator.py`
+
+职责：
+
+- 基于 TestPlan 和源码上下文构造 LLM Prompt。
+- 调用 LLM Client 或离线 mock response 获取 pytest 代码。
+- 从模型响应中提取 Python 代码块。
+- 使用 Security Checker 校验生成测试。
+- 输出 `LLMTestGenerationReport`，支持 dry-run 和可选写入测试文件。
+
+### 3.22 Future Agent Modules
 
 位置：`src/agents/`
 
@@ -398,6 +433,15 @@ RepositoryScanResult
   -> FixPlan
   -> UnitTestReport
   -> Software Engineer JSON Artifact
+
+LLM Test Generation Flow:
+
+RepositoryScanResult
+  -> TestPlan
+  -> LLMTestPrompt
+  -> LLM Client
+  -> SecurityCheckResult
+  -> LLM Test JSON Artifact
 ```
 
 ## 6. 可观测性
@@ -420,6 +464,7 @@ RepositoryScanResult
 - Bug Fix Plan JSON 工件。
 - Unit Test Writer JSON 工件。
 - Software Engineer JSON 工件。
+- LLM Test JSON 工件。
 
 后续将扩展为：
 

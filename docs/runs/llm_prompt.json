@@ -2,8 +2,9 @@
   "llm_config": {
     "provider": "dashscope",
     "model": "glm-5.2",
-    "api_key_set": false,
-    "api_key_env": "DASHSCOPE_API_KEY"
+    "api_key_set": true,
+    "api_key_env": "DASHSCOPE_API_KEY",
+    "base_url": "https://dashscope.aliyuncs.com/compatible-mode/v1"
   },
   "prompt": {
     "system": "You are TestGuard Agent, an expert Python test generation assistant. Generate safe pytest tests only. Do not use network access, subprocesses, file system mutation, eval, exec, or hardcoded secrets.",

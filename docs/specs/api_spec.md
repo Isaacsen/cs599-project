@@ -238,6 +238,40 @@ Generated Test Cases: 3
 Unit Test Security: passed
 ```
 
+### 1.7 运行 LLM 测试生成 Agent
+
+```bash
+python -m src.llm_tests <project_path> [--output PATH] [--test-file PATH] [--max-functions N] [--mock-response PATH] [--apply]
+```
+
+参数：
+
+- `project_path`：待分析的 Python 项目路径。
+- `--output`：LLM 测试生成 JSON 输出路径，默认 `docs/runs/llm_tests.json`。
+- `--test-file`：启用 `--apply` 时写入的项目内测试文件路径，默认 `tests/test_testguard_llm_generated.py`。
+- `--max-functions`：最多考虑的公开函数数量，默认 8。
+- `--mock-response`：可选离线 mock response 文件，用于无网络或无 API Key 的演示。
+- `--apply`：可选开关，启用后将 LLM 生成的 pytest 文件写入目标项目；不传入时只生成 dry-run 报告。
+
+示例：
+
+```bash
+python -m src.llm_tests examples/sample_python_project --mock-response examples/llm_response/pytest_response.md --output docs/runs/llm_tests.json
+```
+
+输出：
+
+```text
+[TestGuard LLM Test Generator]
+
+Project: examples/sample_python_project
+Status: generated
+Provider: dashscope
+Model: glm-5.2
+Generated Test Cases: 2
+Security Check: passed
+```
+
 ## 2. 内部数据结构
 
 ### 2.1 RepositoryScanResult
@@ -434,6 +468,27 @@ Unit Test Security: passed
 
 - `finding_count: int`
 - `fix_edit_count: int`
+- `generated_test_count: int`
+
+### 2.19 LLMTestGenerationReport
+
+字段：
+
+- `project_path: str`
+- `status: str`
+- `applied: bool`
+- `provider: str`
+- `model: str`
+- `api_key_set: bool`
+- `api_key_env: str`
+- `test_file_path: str`
+- `prompt: LLMTestPrompt`
+- `test_plan: TestPlan`
+- `suite: GeneratedTestSuite | None`
+- `security_check: SecurityCheckResult | None`
+
+派生统计：
+
 - `generated_test_count: int`
 
 ## 3. 后续 HTTP API 规划

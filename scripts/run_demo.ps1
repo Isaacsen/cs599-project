@@ -35,4 +35,7 @@ Write-Host "`n[TestGuard Demo] Generate missing unit tests"
 Write-Host "`n[TestGuard Demo] Run software engineer agent"
 & $Python -m src.engineer examples/review_target --output docs/runs/software_engineer.json
 
+Write-Host "`n[TestGuard Demo] Run LLM test generator with offline mock response"
+& $Python -m src.llm_tests examples/sample_python_project --mock-response examples/llm_response/pytest_response.md --output docs/runs/llm_tests.json
+
 Write-Host "`n[TestGuard Demo] Done"

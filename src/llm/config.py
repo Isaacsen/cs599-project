@@ -11,6 +11,12 @@ DEFAULT_MODELS = {
     "openai": "gpt-4o-mini",
     "ollama": "qwen2.5-coder",
 }
+DEFAULT_BASE_URLS = {
+    "dashscope": "https://dashscope.aliyuncs.com/compatible-mode/v1",
+    "deepseek": "https://api.deepseek.com",
+    "openai": "https://api.openai.com/v1",
+    "ollama": "http://localhost:11434/v1",
+}
 PROVIDER_ALIASES = {
     "ali": "dashscope",
     "alibaba": "dashscope",
@@ -25,17 +31,20 @@ class LLMConfig:
     model: str
     api_key_set: bool
     api_key_env: str
+    base_url: str = ""
 
     @classmethod
     def from_env(cls) -> "LLMConfig":
         provider = normalize_provider(os.getenv("LLM_PROVIDER", DEFAULT_PROVIDER))
         model = os.getenv("LLM_MODEL", "").strip() or DEFAULT_MODELS.get(provider, "")
         api_key, api_key_env = get_llm_api_key(provider)
+        base_url = os.getenv("LLM_BASE_URL", "").strip() or DEFAULT_BASE_URLS.get(provider, "")
         return cls(
             provider=provider,
             model=model,
             api_key_set=bool(api_key),
             api_key_env=api_key_env,
+            base_url=base_url,
         )
 
     def api_key(self) -> str:

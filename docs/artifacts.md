@@ -17,6 +17,7 @@
 - `docs/runs/sample_run.json`：一次完整 Agent 运行报告。
 - `docs/runs/benchmark.json`：Benchmark 评估报告。
 - `docs/runs/llm_prompt.json`：LLM 测试生成 Prompt 工件。
+- `docs/runs/llm_tests.json`：LLM Test Generator Agent dry-run 测试生成报告。
 - `docs/runs/review.json`：Code Reviewer Agent 审查报告。
 - `docs/runs/fix_plan.json`：Bug Fixer Agent dry-run 修复计划。
 - `docs/runs/unit_tests.json`：Unit Test Writer Agent dry-run 单测生成报告。
@@ -30,6 +31,7 @@
 - `src/fix.py`：自动修 Bug Agent CLI。
 - `src/unit_tests.py`：缺失覆盖单测生成 Agent CLI。
 - `src/engineer.py`：软件工程师 Agent 统一 CLI。
+- `src/llm_tests.py`：LLM 测试生成 Agent CLI。
 - `src/agents/test_planner.py`：测试规划 Agent。
 - `src/agents/test_generator.py`：测试生成 Agent。
 - `src/agents/security_checker.py`：生成测试安全检查 Agent。
@@ -39,13 +41,15 @@
 - `src/agents/bug_fixer.py`：自动修 Bug Agent。
 - `src/agents/unit_test_writer.py`：缺失覆盖单测生成 Agent。
 - `src/agents/software_engineer.py`：软件工程师 Agent 编排器。
+- `src/agents/llm_test_generator.py`：LLM 测试生成 Agent。
 - `src/sandbox/docker_executor.py`：Docker 沙箱执行器。
 - `src/evaluation/benchmark.py`：Benchmark 汇总逻辑。
 - `src/llm/prompt_builder.py`：LLM Prompt 构建器。
+- `src/llm/client.py`：OpenAI-compatible LLM 客户端。
 
 ## Tests
 
-- `tests/`：单元测试，覆盖测试规划、测试生成、安全检查、结果分析、失败诊断、Benchmark、LLM Prompt 构建、代码审查、自动修 Bug、缺失覆盖单测生成和软件工程师 Agent 编排。
+- `tests/`：单元测试，覆盖测试规划、测试生成、安全检查、结果分析、失败诊断、Benchmark、LLM Prompt 构建、LLM 测试生成、代码审查、自动修 Bug、缺失覆盖单测生成和软件工程师 Agent 编排。
 
 ## Demo Script
 
