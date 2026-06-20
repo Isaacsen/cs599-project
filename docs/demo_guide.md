@@ -167,3 +167,13 @@ python -m src.llm_tests examples/sample_python_project --mock-response examples/
 - `docs/runs/software_engineer.json`
 
 这些文件记录了完整 Demo 的可复现输出。
+
+## 提交前验证
+
+最终提交前可以运行：
+
+```powershell
+scripts/final_verify.ps1
+```
+
+该脚本会执行单元测试、语法编译检查、软件工程师 Agent dry-run、LLM 测试生成离线 mock，以及明文 API Key 扫描。

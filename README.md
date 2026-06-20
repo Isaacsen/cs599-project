@@ -180,9 +180,12 @@ python -m src.llm_tests examples/sample_python_project --mock-response examples/
 ## Demo 与交付物
 
 - 报告草稿：`docs/CS599_大作业报告.md`
+- 报告 PDF：`docs/CS599_大作业报告.pdf`
 - Demo 指南：`docs/demo_guide.md`
 - 交付物索引：`docs/artifacts.md`
 - 一键演示脚本：`scripts/run_demo.ps1`
+- 最终提交检查：`docs/final_submission_checklist.md`
+- 离线最终验证脚本：`scripts/final_verify.ps1`
 
 ## 引用与说明
 

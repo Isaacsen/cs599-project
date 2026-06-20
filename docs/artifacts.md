@@ -2,15 +2,18 @@
 
 ## Specs
 
-- `docs/CS599_大作业报告.md`：最终报告 Markdown 草稿，可转 PDF。
+- `docs/CS599_大作业报告.md`：最终报告 Markdown 草稿。
+- `docs/CS599_大作业报告.pdf`：最终报告 PDF，包含 PDF 大纲书签。
 - `docs/specs/product_spec.md`：产品规格，描述问题、用户、功能需求和非功能需求。
 - `docs/specs/architecture_spec.md`：架构规格，描述 Agent 模块、数据流、权限隔离和可观测性。
 - `docs/specs/api_spec.md`：API 规格，描述 CLI、Benchmark 命令和核心数据结构。
+- `实现计划.md`：按新架构拆分的阶段实现计划。
 
 ## Architecture
 
 - `docs/architecture.md`：课程报告可复用的架构图、阶段验收标准和系统流程。
 - `docs/security_policy.md`：Docker 沙箱权限隔离策略。
+- `docs/final_submission_checklist.md`：最终提交检查清单。
 
 ## Demo Outputs
 
@@ -54,3 +57,5 @@
 ## Demo Script
 
 - `scripts/run_demo.ps1`：Windows PowerShell 一键演示脚本。
+- `scripts/final_verify.ps1`：最终提交前离线验证脚本。
+- `scripts/export_report_pdf.py`：最终报告 PDF 导出脚本。
