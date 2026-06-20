@@ -119,32 +119,32 @@
         "line": 2,
         "severity": "medium",
         "rule": "llm_review",
-        "message": "Risk of ZeroDivisionError if `b` is 0.",
-        "suggestion": "Add a check for `b == 0` and raise a `ValueError` or handle it explicitly."
+        "message": "Division by zero is not handled, which will raise an unhandled ZeroDivisionError if 'b' is 0.",
+        "suggestion": "Add a check for 'b == 0' and raise a descriptive exception or handle it appropriately."
       },
       {
         "file_path": "risky_module.py",
         "line": 6,
         "severity": "high",
         "rule": "llm_review",
-        "message": "Using `eval()` on an arbitrary string allows arbitrary code execution.",
-        "suggestion": "Replace `eval()` with `ast.literal_eval()` or a safe math expression parser."
+        "message": "Using eval() on an arbitrary string is a critical security risk that allows arbitrary code execution.",
+        "suggestion": "Avoid eval(). Use ast.literal_eval for literals or a dedicated parsing library for mathematical expressions."
       },
       {
         "file_path": "risky_module.py",
         "line": 9,
         "severity": "high",
         "rule": "llm_review",
-        "message": "Hardcoded API token in source code.",
-        "suggestion": "Load tokens from environment variables or a secure vault."
+        "message": "Hardcoded API token in source code, which is a security risk and bad practice.",
+        "suggestion": "Load secrets from environment variables or a secure secret management system."
       },
       {
         "file_path": "risky_module.py",
-        "line": 13,
+        "line": 14,
         "severity": "low",
         "rule": "llm_review",
-        "message": "Broad exception handling silently swallows errors and returns 0.",
-        "suggestion": "Catch specific exceptions like `ValueError` and log or raise a custom exception."
+        "message": "Broad exception catching hides errors and returns 0, making it impossible to distinguish between valid '0' input and invalid input.",
+        "suggestion": "Catch specific exceptions like ValueError, and consider logging the error or raising a custom exception."
       }
     ]
   },
@@ -308,7 +308,7 @@
     },
     "suite": {
       "test_file_name": "test_testguard_llm_generated.py",
-      "content": "import pytest\n\nfrom risky_module import divide, parse_expression, hide_error\n\n\nclass TestDivide:\n    def test_divide_happy_path(self):\n        assert divide(10, 2) == 5.0\n\n    def test_divide_negative_numerator(self):\n        assert divide(-6, 3) == -2.0\n\n    def test_divide_float_result(self):\n        assert divide(7, 2) == 3.5\n\n    def test_divide_by_zero_raises(self):\n        with pytest.raises(ZeroDivisionError):\n            divide(1, 0)\n\n    def test_divide_zero_by_zero_raises(self):\n        with pytest.raises(ZeroDivisionError):\n            divide(0, 0)\n\n\nclass TestParseExpression:\n    def test_parse_expression_smoke(self):\n        result = parse_expression(\"1 + 1\")\n        assert result == 2\n\n    def test_parse_expression_callable(self):\n        # Smoke test: ensure the public function remains importable and callable.\n        assert parse_expression(\"2\") == 2\n\n\nclass TestHideError:\n    def test_hide_error_valid_integer(self):\n        assert hide_error(\"42\") == 42\n\n    def test_hide_error_invalid_returns_zero(self):\n        assert hide_error(\"not-a-number\") == 0\n\n    def test_hide_error_empty_string_returns_zero(self):\n        assert hide_error(\"\") == 0\n\n    def test_hide_error_none_returns_zero(self):\n        assert hide_error(None) == 0\n",
+      "content": "import pytest\n\nfrom risky_module import divide, parse_expression, hide_error\n\n\nclass TestDivide:\n    def test_divide_happy_path_positive(self):\n        assert divide(10, 2) == 5.0\n\n    def test_divide_happy_path_negative(self):\n        assert divide(-6, 3) == -2.0\n\n    def test_divide_happy_path_float(self):\n        assert divide(7.5, 2.5) == 3.0\n\n    def test_divide_zero_denominator_raises(self):\n        with pytest.raises(ZeroDivisionError):\n            divide(1, 0)\n\n    def test_divide_zero_numerator_returns_zero(self):\n        assert divide(0, 5) == 0.0\n\n\nclass TestParseExpression:\n    def test_parse_expression_is_callable(self):\n        result = parse_expression(\"1 + 1\")\n        assert result == 2\n\n    def test_parse_expression_returns_int_for_int_literal(self):\n        assert parse_expression(\"42\") == 42\n\n\nclass TestHideError:\n    def test_hide_error_valid_integer(self):\n        assert hide_error(\"42\") == 42\n\n    def test_hide_error_invalid_string_returns_zero(self):\n        assert hide_error(\"not-a-number\") == 0\n\n    def test_hide_error_empty_string_returns_zero(self):\n        assert hide_error(\"\") == 0\n",
       "covered_functions": [
         "risky_module.divide",
         "risky_module.parse_expression",
@@ -327,19 +327,19 @@
     "execution": {
       "passed": true,
       "exit_code": 0,
-      "stdout": "============================= test session starts ==============================\nplatform linux -- Python 3.11.15, pytest-9.1.0, pluggy-1.6.0\nrootdir: /workspace\ncollected 14 items\n\ntests/test_testguard_generated.py ...                                    [ 21%]\ntests/test_testguard_llm_generated.py ...........                        [100%]\n\n============================== 14 passed in 0.10s ==============================\n",
+      "stdout": "============================= test session starts ==============================\nplatform linux -- Python 3.11.15, pytest-9.1.0, pluggy-1.6.0\nrootdir: /workspace\ncollected 13 items\n\ntests/test_testguard_generated.py ...                                    [ 23%]\ntests/test_testguard_llm_generated.py ..........                         [100%]\n\n============================== 13 passed in 0.11s ==============================\n",
       "stderr": "",
-      "duration_seconds": 1.3023408000008203,
+      "duration_seconds": 1.1194995000041672,
       "timed_out": false,
       "executor": "docker"
     },
     "analysis": {
-      "passed": 14,
+      "passed": 13,
       "failed": 0,
       "errors": 0,
       "skipped": 0,
       "warnings": 0,
-      "total": 14,
+      "total": 13,
       "conclusion": "passed"
     },
     "diagnosis": {

@@ -312,21 +312,102 @@ def format_software_engineer_graph_result(result: SoftwareEngineerGraphResult) -
     lines = [
         "[TestGuard Software Engineer LangGraph]",
         "",
-        f"Project: {result.project_path}",
-        f"Status: {state.get('status', 'unknown')}",
-        f"Runtime: {result.graph_runtime}",
-        f"Node Trace: {' -> '.join(result.node_trace)}",
+        "Run Summary",
+        f"  Project: {result.project_path}",
+        f"  Status: {state.get('status', 'unknown')}",
+        f"  Runtime: {result.graph_runtime}",
         "",
-        f"Review Findings: {result.finding_count}",
-        f"LLM Review Findings: {_llm_review_count(state)}",
-        f"Fix Edits: {result.fix_edit_count}",
-        f"Patch Review: {_patch_review_status(state)}",
-        f"Generated Unit Tests: {result.generated_unit_test_count}",
-        f"Generated LLM Tests: {result.generated_llm_test_count}",
-        f"Sandbox Validation: {_sandbox_status(state)}",
-        f"Coverage Feedback: {_coverage_status(state)}",
+        "Agent Timeline",
+        *_format_timeline(state, result.node_trace),
+        "",
+        "Outcome",
+        f"  Rule Review Findings: {result.finding_count}",
+        f"  LLM Review Findings: {_llm_review_count(state)}",
+        f"  Fix Edits Planned: {result.fix_edit_count}",
+        f"  Patch Review: {_patch_review_status(state)}",
+        f"  Generated Unit Tests: {result.generated_unit_test_count}",
+        f"  Generated LLM Tests: {result.generated_llm_test_count}",
+        f"  Sandbox Validation: {_sandbox_status(state)}",
+        f"  Coverage Feedback: {_coverage_status(state)}",
+        "",
+        "Highlights",
+        *_format_highlights(state),
     ]
     return "\n".join(lines)
+
+
+def _format_timeline(state: SoftwareEngineerGraphState, node_trace: list[str]) -> list[str]:
+    labels = {
+        "scan": "Repo scan",
+        "review": "Rule code review",
+        "llm_review": "LLM code review",
+        "fix": "Bug-fix planning",
+        "patch_review": "Patch review",
+        "unit_tests": "Unit test writer",
+        "llm_tests": "LLM test writer",
+        "sandbox_validate": "Sandbox pytest",
+        "repair_loop": "Repair loop",
+        "coverage_feedback": "Coverage feedback",
+        "finish": "Finish",
+    }
+    return [
+        f"  {index:02d}. {labels.get(node, node)} - {_node_status(state, node)}"
+        for index, node in enumerate(node_trace, start=1)
+    ]
+
+
+def _node_status(state: SoftwareEngineerGraphState, node: str) -> str:
+    if node == "scan" and "scan" in state:
+        return f"{len(state['scan'].source_files)} source file(s)"
+    if node == "review" and "review" in state:
+        return f"{state['review'].finding_count} finding(s)"
+    if node == "llm_review" and "llm_review" in state:
+        return f"{state['llm_review'].finding_count} finding(s)"
+    if node == "fix" and "fix_plan" in state:
+        return f"{state['fix_plan'].edit_count} edit(s)"
+    if node == "patch_review" and "patch_review" in state:
+        return state["patch_review"].status
+    if node == "unit_tests" and "unit_tests" in state:
+        return f"{state['unit_tests'].generated_test_count} test(s)"
+    if node == "llm_tests" and "llm_tests" in state:
+        return f"{state['llm_tests'].generated_test_count} test(s)"
+    if node == "sandbox_validate" and "sandbox_validation" in state:
+        report = state["sandbox_validation"]
+        return f"{report.status}, {report.analysis.passed}/{report.analysis.total} passed"
+    if node == "repair_loop" and "repair_loop" in state:
+        return f"{state['repair_loop'].status}, next={state['repair_loop'].next_step}"
+    if node == "coverage_feedback" and "coverage_feedback" in state:
+        return f"{state['coverage_feedback'].coverage_ratio:.0%}"
+    if node == "finish":
+        return state.get("status", "unknown")
+    return "not_run"
+
+
+def _format_highlights(state: SoftwareEngineerGraphState) -> list[str]:
+    highlights: list[str] = []
+    review = state.get("review")
+    if review and review.findings:
+        first = review.findings[0]
+        highlights.append(f"  - Rule review: [{first.severity}] {first.rule} at {first.file_path}:{first.line}")
+    llm_review = state.get("llm_review")
+    if llm_review and llm_review.findings:
+        first = llm_review.findings[0]
+        highlights.append(f"  - LLM review: [{first.severity}] {first.message}")
+    patch_review = state.get("patch_review")
+    if patch_review:
+        highlights.append(f"  - Patch review: {patch_review.status}")
+    sandbox = state.get("sandbox_validation")
+    if sandbox:
+        highlights.append(f"  - Sandbox pytest: {sandbox.analysis.passed}/{sandbox.analysis.total} passed")
+    coverage = state.get("coverage_feedback")
+    if coverage:
+        highlights.append(f"  - Coverage: {coverage.coverage_ratio:.0%}; missing={len(coverage.missing_functions)}")
+    repair = state.get("repair_loop")
+    if repair and repair.actions:
+        highlights.append(f"  - Next action: {repair.actions[0]}")
+    if not highlights:
+        highlights.append("  - No detailed highlights available.")
+    return highlights
 
 
 def _llm_review_count(state: SoftwareEngineerGraphState) -> int:
