@@ -6,9 +6,13 @@ from typing import Any, TypedDict
 
 from src.agents.bug_fixer import FixPlan, fix_repository
 from src.agents.code_reviewer import ReviewReport, review_repository
+from src.agents.coverage_feedback import CoverageFeedbackReport, build_coverage_feedback
+from src.agents.llm_code_reviewer import LLMCodeReviewReport, review_repository_with_llm
 from src.agents.llm_test_generator import LLMTestGenerationReport, generate_llm_pytest_tests
+from src.agents.patch_reviewer import PatchReviewReport, review_fix_plan
+from src.agents.repair_loop import RepairLoopReport, plan_repair_iteration
+from src.agents.sandbox_validator import SandboxValidationReport, validate_generated_tests_in_sandbox
 from src.agents.unit_test_writer import UnitTestReport, generate_missing_unit_tests
-from src.llm.client import StaticLLMClient
 from src.tools.repo_scanner import RepositoryScanResult, scan_repository
 
 try:
@@ -26,18 +30,28 @@ class SoftwareEngineerGraphState(TypedDict, total=False):
     project_path: str
     apply_fixes: bool
     apply_tests: bool
+    use_llm_review: bool
     use_llm_tests: bool
+    run_sandbox: bool
+    sandbox_executor: str
+    docker_image: str
+    timeout_seconds: int
+    repair_iterations: int
     test_file_path: str
     llm_test_file_path: str
     max_functions: int
-    mock_llm_response: str
     graph_runtime: str
     status: str
     scan: RepositoryScanResult
     review: ReviewReport
+    llm_review: LLMCodeReviewReport
     fix_plan: FixPlan
+    patch_review: PatchReviewReport
     unit_tests: UnitTestReport
     llm_tests: LLMTestGenerationReport
+    sandbox_validation: SandboxValidationReport
+    repair_loop: RepairLoopReport
+    coverage_feedback: CoverageFeedbackReport
     node_trace: list[str]
 
 
@@ -82,21 +96,31 @@ def run_software_engineer_graph(
     project_path: str | Path,
     apply_fixes: bool = False,
     apply_tests: bool = False,
+    use_llm_review: bool = False,
     use_llm_tests: bool = False,
+    run_sandbox: bool = False,
+    sandbox_executor: str = "docker",
+    docker_image: str = "testguard-python:latest",
+    timeout_seconds: int = 30,
+    repair_iterations: int = 1,
     test_file_path: str | Path = "tests/test_testguard_generated.py",
     llm_test_file_path: str | Path = "tests/test_testguard_llm_generated.py",
     max_functions: int = 8,
-    mock_llm_response: str | None = None,
 ) -> SoftwareEngineerGraphResult:
     initial_state: SoftwareEngineerGraphState = {
         "project_path": str(Path(project_path).resolve()),
         "apply_fixes": apply_fixes,
         "apply_tests": apply_tests,
+        "use_llm_review": use_llm_review,
         "use_llm_tests": use_llm_tests,
+        "run_sandbox": run_sandbox,
+        "sandbox_executor": sandbox_executor,
+        "docker_image": docker_image,
+        "timeout_seconds": timeout_seconds,
+        "repair_iterations": repair_iterations,
         "test_file_path": str(test_file_path),
         "llm_test_file_path": str(llm_test_file_path),
         "max_functions": max_functions,
-        "mock_llm_response": mock_llm_response or "",
         "node_trace": [],
     }
 
@@ -115,24 +139,49 @@ def build_software_engineer_graph() -> Any:
     graph = StateGraph(SoftwareEngineerGraphState)
     graph.add_node("scan", scan_node)
     graph.add_node("review", review_node)
+    graph.add_node("llm_review", llm_review_node)
     graph.add_node("fix", fix_node)
+    graph.add_node("patch_review", patch_review_node)
     graph.add_node("unit_tests", unit_tests_node)
     graph.add_node("llm_tests", llm_tests_node)
+    graph.add_node("sandbox_validate", sandbox_validate_node)
+    graph.add_node("repair_loop", repair_loop_node)
+    graph.add_node("coverage_feedback", coverage_feedback_node)
     graph.add_node("finish", finish_node)
 
     graph.add_edge(START, "scan")
     graph.add_edge("scan", "review")
-    graph.add_edge("review", "fix")
-    graph.add_edge("fix", "unit_tests")
+    graph.add_conditional_edges(
+        "review",
+        _route_after_review,
+        {
+            "llm_review": "llm_review",
+            "fix": "fix",
+        },
+    )
+    graph.add_edge("llm_review", "fix")
+    graph.add_edge("fix", "patch_review")
+    graph.add_edge("patch_review", "unit_tests")
     graph.add_conditional_edges(
         "unit_tests",
         _route_after_unit_tests,
         {
             "llm_tests": "llm_tests",
-            "finish": "finish",
+            "sandbox_validate": "sandbox_validate",
+            "coverage_feedback": "coverage_feedback",
         },
     )
-    graph.add_edge("llm_tests", "finish")
+    graph.add_conditional_edges(
+        "llm_tests",
+        _route_after_generated_tests,
+        {
+            "sandbox_validate": "sandbox_validate",
+            "coverage_feedback": "coverage_feedback",
+        },
+    )
+    graph.add_edge("sandbox_validate", "repair_loop")
+    graph.add_edge("repair_loop", "coverage_feedback")
+    graph.add_edge("coverage_feedback", "finish")
     graph.add_edge("finish", END)
     return graph.compile()
 
@@ -154,6 +203,14 @@ def review_node(state: SoftwareEngineerGraphState) -> SoftwareEngineerGraphState
     }
 
 
+def llm_review_node(state: SoftwareEngineerGraphState) -> SoftwareEngineerGraphState:
+    llm_review = review_repository_with_llm(state["project_path"], state["scan"])
+    return {
+        "llm_review": llm_review,
+        "node_trace": [*state.get("node_trace", []), "llm_review"],
+    }
+
+
 def fix_node(state: SoftwareEngineerGraphState) -> SoftwareEngineerGraphState:
     fix_plan = fix_repository(
         state["project_path"],
@@ -163,6 +220,14 @@ def fix_node(state: SoftwareEngineerGraphState) -> SoftwareEngineerGraphState:
     return {
         "fix_plan": fix_plan,
         "node_trace": [*state.get("node_trace", []), "fix"],
+    }
+
+
+def patch_review_node(state: SoftwareEngineerGraphState) -> SoftwareEngineerGraphState:
+    patch_review = review_fix_plan(state["project_path"], state["scan"], state["fix_plan"])
+    return {
+        "patch_review": patch_review,
+        "node_trace": [*state.get("node_trace", []), "patch_review"],
     }
 
 
@@ -182,18 +247,56 @@ def unit_tests_node(state: SoftwareEngineerGraphState) -> SoftwareEngineerGraphS
 
 
 def llm_tests_node(state: SoftwareEngineerGraphState) -> SoftwareEngineerGraphState:
-    client = StaticLLMClient(state["mock_llm_response"]) if state.get("mock_llm_response") else None
     llm_tests = generate_llm_pytest_tests(
         state["project_path"],
         state["scan"],
         apply_changes=state.get("apply_tests", False),
         test_file_path=state.get("llm_test_file_path", "tests/test_testguard_llm_generated.py"),
         max_functions=state.get("max_functions", 8),
-        client=client,
     )
     return {
         "llm_tests": llm_tests,
         "node_trace": [*state.get("node_trace", []), "llm_tests"],
+    }
+
+
+def sandbox_validate_node(state: SoftwareEngineerGraphState) -> SoftwareEngineerGraphState:
+    sandbox_validation = validate_generated_tests_in_sandbox(
+        state["project_path"],
+        unit_tests=state.get("unit_tests"),
+        llm_tests=state.get("llm_tests"),
+        executor=state.get("sandbox_executor", "docker"),
+        docker_image=state.get("docker_image", "testguard-python:latest"),
+        timeout_seconds=state.get("timeout_seconds", 30),
+    )
+    return {
+        "sandbox_validation": sandbox_validation,
+        "node_trace": [*state.get("node_trace", []), "sandbox_validate"],
+    }
+
+
+def repair_loop_node(state: SoftwareEngineerGraphState) -> SoftwareEngineerGraphState:
+    repair_loop = plan_repair_iteration(
+        state.get("patch_review"),
+        state.get("sandbox_validation"),
+        max_iterations=state.get("repair_iterations", 1),
+    )
+    return {
+        "repair_loop": repair_loop,
+        "node_trace": [*state.get("node_trace", []), "repair_loop"],
+    }
+
+
+def coverage_feedback_node(state: SoftwareEngineerGraphState) -> SoftwareEngineerGraphState:
+    coverage_feedback = build_coverage_feedback(
+        state["project_path"],
+        state["scan"],
+        unit_tests=state.get("unit_tests"),
+        llm_tests=state.get("llm_tests"),
+    )
+    return {
+        "coverage_feedback": coverage_feedback,
+        "node_trace": [*state.get("node_trace", []), "coverage_feedback"],
     }
 
 
@@ -215,25 +318,81 @@ def format_software_engineer_graph_result(result: SoftwareEngineerGraphResult) -
         f"Node Trace: {' -> '.join(result.node_trace)}",
         "",
         f"Review Findings: {result.finding_count}",
+        f"LLM Review Findings: {_llm_review_count(state)}",
         f"Fix Edits: {result.fix_edit_count}",
+        f"Patch Review: {_patch_review_status(state)}",
         f"Generated Unit Tests: {result.generated_unit_test_count}",
         f"Generated LLM Tests: {result.generated_llm_test_count}",
+        f"Sandbox Validation: {_sandbox_status(state)}",
+        f"Coverage Feedback: {_coverage_status(state)}",
     ]
     return "\n".join(lines)
+
+
+def _llm_review_count(state: SoftwareEngineerGraphState) -> int:
+    report = state.get("llm_review")
+    return report.finding_count if report else 0
+
+
+def _patch_review_status(state: SoftwareEngineerGraphState) -> str:
+    report = state.get("patch_review")
+    if report is None:
+        return "not_run"
+    return report.status
+
+
+def _sandbox_status(state: SoftwareEngineerGraphState) -> str:
+    report = state.get("sandbox_validation")
+    if report is None:
+        return "not_run"
+    return report.status
+
+
+def _coverage_status(state: SoftwareEngineerGraphState) -> str:
+    report = state.get("coverage_feedback")
+    if report is None:
+        return "not_run"
+    return f"{report.coverage_ratio:.0%}"
 
 
 def _route_after_unit_tests(state: SoftwareEngineerGraphState) -> str:
     if state.get("use_llm_tests", False):
         return "llm_tests"
+    return _route_after_generated_tests(state)
+
+
+def _route_after_review(state: SoftwareEngineerGraphState) -> str:
+    if state.get("use_llm_review", False):
+        return "llm_review"
+    return "fix"
+
+
+def _route_after_generated_tests(state: SoftwareEngineerGraphState) -> str:
+    if state.get("run_sandbox", False):
+        return "sandbox_validate"
+    return "coverage_feedback"
+
+
+def _route_after_llm_tests(state: SoftwareEngineerGraphState) -> str:
+    if state.get("run_sandbox", False):
+        return "sandbox_validate"
     return "finish"
 
 
 def _run_fallback_graph(initial_state: SoftwareEngineerGraphState) -> SoftwareEngineerGraphState:
     state: SoftwareEngineerGraphState = dict(initial_state)
-    for node in [scan_node, review_node, fix_node, unit_tests_node]:
+    for node in [scan_node, review_node]:
+        state.update(node(state))
+    if _route_after_review(state) == "llm_review":
+        state.update(llm_review_node(state))
+    for node in [fix_node, patch_review_node, unit_tests_node]:
         state.update(node(state))
     if _route_after_unit_tests(state) == "llm_tests":
         state.update(llm_tests_node(state))
+    if _route_after_generated_tests(state) == "sandbox_validate":
+        state.update(sandbox_validate_node(state))
+        state.update(repair_loop_node(state))
+    state.update(coverage_feedback_node(state))
     state.update(finish_node(state))
     state["graph_runtime"] = "fallback"
     return state

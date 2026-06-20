@@ -44,10 +44,15 @@
 - `src/agents/result_analyzer.py`：pytest 结果分析 Agent。
 - `src/agents/failure_diagnoser.py`：失败诊断与修复建议 Agent。
 - `src/agents/code_reviewer.py`：代码审查 Agent。
+- `src/agents/llm_code_reviewer.py`：真实 LLM 代码审查 Agent。
 - `src/agents/bug_fixer.py`：自动修 Bug Agent。
+- `src/agents/patch_reviewer.py`：Patch 审查 Agent。
 - `src/agents/unit_test_writer.py`：缺失覆盖单测生成 Agent。
 - `src/agents/software_engineer.py`：软件工程师 Agent 编排器。
 - `src/agents/llm_test_generator.py`：LLM 测试生成 Agent。
+- `src/agents/sandbox_validator.py`：沙箱验证 Agent。
+- `src/agents/repair_loop.py`：修复循环规划 Agent。
+- `src/agents/coverage_feedback.py`：覆盖反馈 Agent。
 - `src/workflow/software_engineer_graph.py`：LangGraph StateGraph 工作流。
 - `src/tools/software_engineer_graph_writer.py`：LangGraph 软件工程师报告 JSON writer。
 - `src/sandbox/docker_executor.py`：Docker 沙箱执行器。
@@ -57,7 +62,7 @@
 
 ## Tests
 
-- `tests/`：单元测试，覆盖测试规划、测试生成、安全检查、结果分析、失败诊断、Benchmark、LLM Prompt 构建、LLM 测试生成、代码审查、自动修 Bug、缺失覆盖单测生成和 LangGraph 软件工程师 Agent 编排。
+- `tests/`：单元测试，覆盖测试规划、测试生成、安全检查、结果分析、失败诊断、Benchmark、LLM Prompt 构建、LLM 测试生成、代码审查、LLM 代码审查、自动修 Bug、Patch 审查、沙箱验证、修复循环、覆盖反馈、缺失覆盖单测生成和 LangGraph 软件工程师 Agent 编排。
 
 ## Demo Script
 

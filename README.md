@@ -144,18 +144,18 @@ Unit Test Writer Agent 默认只生成 dry-run 报告，不写入目标项目。
 12. 运行软件工程师 Agent：
 
 ```bash
-python -m src.engineer examples/review_target --use-llm-tests --mock-llm-response examples/llm_response/review_target_response.md --output docs/runs/software_engineer.json
+python -m src.engineer examples/review_target --use-llm-review --use-llm-tests --run-sandbox --sandbox-executor docker --output docs/runs/software_engineer.json
 ```
 
-Software Engineer Agent 使用 LangGraph StateGraph 串联代码审查、自动修 Bug 计划、缺失覆盖单测生成和可选 LLM 测试生成，默认 dry-run，不修改目标项目。需要写回修复或测试时，可分别追加 `--apply-fixes` 或 `--apply-tests`。
+Software Engineer Agent 使用 LangGraph StateGraph 串联规则代码审查、真实 LLM 代码审查、自动修 Bug 计划、Patch 审查、缺失覆盖单测生成、真实 LLM 测试生成、Docker 沙箱验证、修复循环规划和覆盖反馈，默认 dry-run，不修改目标项目。需要写回修复或测试时，可分别追加 `--apply-fixes` 或 `--apply-tests`。
 
 13. 运行 LLM 测试生成 Agent：
 
 ```bash
-python -m src.llm_tests examples/sample_python_project --mock-response examples/llm_response/pytest_response.md --output docs/runs/llm_tests.json
+python -m src.llm_tests examples/sample_python_project --output docs/runs/llm_tests.json
 ```
 
-离线 Demo 使用 `--mock-response` 模拟 LLM 返回，便于无网络或无 API Key 时演示完整链路。真实调用时去掉 `--mock-response`，系统会按环境变量读取 DashScope / DeepSeek / OpenAI-compatible 配置，并只在报告中记录 `api_key_set` 和 `api_key_env`，不会写出 API Key 明文。
+LLM 测试生成默认使用真实 Agent 调用，系统会按环境变量读取 DashScope / DeepSeek / OpenAI-compatible 配置，并只在报告中记录 `api_key_set` 和 `api_key_env`，不会写出 API Key 明文。
 
 ## 项目状态
 

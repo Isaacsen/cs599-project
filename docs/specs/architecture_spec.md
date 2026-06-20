@@ -291,7 +291,7 @@ Repo Scanner
 - 使用标准库调用 OpenAI-compatible Chat Completions 接口。
 - 默认支持 DashScope、DeepSeek、OpenAI 和 Ollama 风格 base URL。
 - 仅在请求头中使用 API Key，不写出 API Key 明文。
-- 提供 `StaticLLMClient` 支持离线 mock response 演示。
+- 通过环境变量读取 DashScope、DeepSeek、OpenAI-compatible 或 Ollama 配置并执行真实 LLM 调用。
 
 ### 3.17 Code Reviewer Agent
 
@@ -350,7 +350,7 @@ Repo Scanner
 职责：
 
 - 基于 TestPlan 和源码上下文构造 LLM Prompt。
-- 调用 LLM Client 或离线 mock response 获取 pytest 代码。
+- 调用真实 LLM Client 获取 pytest 代码。
 - 从模型响应中提取 Python 代码块。
 - 使用 Security Checker 校验生成测试。
 - 输出 `LLMTestGenerationReport`，支持 dry-run 和可选写入测试文件。

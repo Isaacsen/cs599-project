@@ -21,7 +21,7 @@ TestGuard Agent 目标是构建一个面向 Python 项目的软件工程师 Agen
 6. 执行代码审查，发现危险调用、疑似硬编码密钥、异常处理和测试覆盖风险。
 7. 生成自动修 Bug 计划，并在用户显式确认时应用安全修复。
 8. 为缺失覆盖的公开函数生成单元测试，并在用户显式确认时写入目标项目。
-9. 通过基于 LangGraph StateGraph 的统一软件工程师 Agent 编排代码审查、修复计划、单测生成和可选 LLM 测试生成。
+9. 通过基于 LangGraph StateGraph 的统一软件工程师 Agent 编排规则审查、LLM 审查、修复计划、Patch 审查、单测生成、LLM 测试生成、沙箱验证、修复循环和覆盖反馈。
 10. 接入 OpenAI-compatible LLM 测试生成，支持 DashScope、DeepSeek 等 provider。
 
 ## 4. 第一阶段范围
@@ -180,11 +180,11 @@ TestPlan + Source Context -> LLM Test Generator Agent -> SecurityCheckResult -> 
 
 ### FR-18 软件工程师 Agent 编排
 
-系统应提供基于 LangGraph StateGraph 的统一软件工程师 Agent 入口，串联代码审查、自动修 Bug 计划、缺失覆盖单测生成和可选 LLM 测试生成，输出统一 JSON 报告；默认 dry-run，不修改目标项目，用户可通过独立开关启用修复、测试写回或 LLM 测试节点。
+系统应提供基于 LangGraph StateGraph 的统一软件工程师 Agent 入口，串联规则代码审查、真实 LLM 代码审查、自动修 Bug 计划、Patch 审查、缺失覆盖单测生成、真实 LLM 测试生成、沙箱验证、修复循环规划和覆盖反馈，输出统一 JSON 报告；默认 dry-run，不修改目标项目，用户可通过独立开关启用修复、测试写回、LLM 节点或沙箱验证。
 
 ### FR-19 LLM 测试生成
 
-系统应提供 LLM Test Generator Agent，基于 TestPlan 和源码上下文调用 OpenAI-compatible Chat Completions 接口生成 pytest 代码，支持 DashScope、DeepSeek 等 provider；生成代码必须经过 Security Checker，报告不得包含 API Key 明文，并支持离线 mock response 演示。
+系统应提供 LLM Test Generator Agent，基于 TestPlan 和源码上下文调用 OpenAI-compatible Chat Completions 接口生成 pytest 代码，支持 DashScope、DeepSeek 等 provider；生成代码必须经过 Security Checker，报告不得包含 API Key 明文，并默认使用真实 provider 配置。
 
 ## 6. 非功能需求
 
@@ -197,6 +197,6 @@ TestPlan + Source Context -> LLM Test Generator Agent -> SecurityCheckResult -> 
 
 - SDD 规格驱动开发：Product Spec、Architecture Spec、API Spec。
 - 工具使用 / Function Calling：项目扫描、测试执行、代码审查和报告生成均设计为可被 Agent 调用的工具。
-- 状态管理与多步骤推理：使用 LangGraph StateGraph 编排扫描、审查、修复计划、单测生成和可选 LLM 测试生成流程。
+- 状态管理与多步骤推理：使用 LangGraph StateGraph 编排扫描、审查、LLM 审查、修复计划、Patch 审查、单测生成、LLM 测试生成、沙箱验证、修复循环和覆盖反馈流程。
 - 可观测性与评估：记录测试结果、耗时、退出码、通过率和失败原因。
 - 权限隔离：通过 Docker 实现网络禁用、只读挂载、资源限制和超时控制。

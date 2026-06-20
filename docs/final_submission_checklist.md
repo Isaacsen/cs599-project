@@ -20,8 +20,8 @@
 ```bash
 python -m unittest discover -s tests
 python -m compileall src tests examples
-python -m src.engineer examples/review_target --use-llm-tests --mock-llm-response examples/llm_response/review_target_response.md --output docs/runs/software_engineer.json
-python -m src.llm_tests examples/sample_python_project --mock-response examples/llm_response/pytest_response.md --output docs/runs/llm_tests.json
+python -m src.engineer examples/review_target --use-llm-review --use-llm-tests --run-sandbox --sandbox-executor docker --output docs/runs/software_engineer.json
+python -m src.llm_tests examples/sample_python_project --output docs/runs/llm_tests.json
 ```
 
 Windows PowerShell helper:

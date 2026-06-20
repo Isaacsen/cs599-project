@@ -17,13 +17,13 @@ if ($LASTEXITCODE -ne 0) {
 }
 
 Write-Host "`n[TestGuard Final Verify] Generate software engineer report"
-& $Python -m src.engineer examples/review_target --use-llm-tests --mock-llm-response examples/llm_response/review_target_response.md --output docs/runs/software_engineer.json
+& $Python -m src.engineer examples/review_target --use-llm-review --use-llm-tests --run-sandbox --sandbox-executor docker --output docs/runs/software_engineer.json
 if ($LASTEXITCODE -ne 0) {
     throw "Software engineer agent failed."
 }
 
-Write-Host "`n[TestGuard Final Verify] Generate LLM test report with offline mock"
-& $Python -m src.llm_tests examples/sample_python_project --mock-response examples/llm_response/pytest_response.md --output docs/runs/llm_tests.json
+Write-Host "`n[TestGuard Final Verify] Generate LLM test report with configured provider"
+& $Python -m src.llm_tests examples/sample_python_project --output docs/runs/llm_tests.json
 if ($LASTEXITCODE -ne 0) {
     throw "LLM test generator failed."
 }

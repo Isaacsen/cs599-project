@@ -117,25 +117,25 @@ python -m src.unit_tests examples/review_target --output docs/runs/unit_tests.js
 ### 7. 运行软件工程师 Agent
 
 ```bash
-python -m src.engineer examples/review_target --use-llm-tests --mock-llm-response examples/llm_response/review_target_response.md --output docs/runs/software_engineer.json
+python -m src.engineer examples/review_target --use-llm-review --use-llm-tests --run-sandbox --sandbox-executor docker --output docs/runs/software_engineer.json
 ```
 
 演示要点：
 
-- 使用 LangGraph StateGraph 串联代码审查、自动修 Bug 计划、缺失覆盖单测生成和 LLM 测试生成。
+- 使用 LangGraph StateGraph 串联规则审查、LLM 审查、Patch 审查、单测生成、LLM 测试生成、Docker 沙箱验证、修复循环和覆盖反馈。
 - 默认 dry-run，不修改样例源码。
 - 统一报告写入 `docs/runs/software_engineer.json`。
 
 ### 8. 运行 LLM 测试生成 Agent
 
 ```bash
-python -m src.llm_tests examples/sample_python_project --mock-response examples/llm_response/pytest_response.md --output docs/runs/llm_tests.json
+python -m src.llm_tests examples/sample_python_project --output docs/runs/llm_tests.json
 ```
 
 演示要点：
 
-- 离线 Demo 使用 mock response，不需要现场网络。
-- 真实调用时去掉 `--mock-response`，使用环境变量中的 DashScope / DeepSeek 配置。
+- LLM Demo 使用环境变量中的真实 provider 配置。
+- 使用环境变量中的 DashScope / DeepSeek 配置进行真实 LLM 调用。
 - 生成的 pytest 内容经过 Security Checker。
 - LLM 测试生成报告写入 `docs/runs/llm_tests.json`。
 
@@ -177,4 +177,4 @@ python -m src.llm_tests examples/sample_python_project --mock-response examples/
 scripts/final_verify.ps1
 ```
 
-该脚本会执行单元测试、语法编译检查、LangGraph 软件工程师 Agent dry-run、LLM 测试生成离线 mock、PDF 导出检查，以及明文 API Key 扫描。
+该脚本会执行单元测试、语法编译检查、LangGraph 软件工程师 Agent dry-run、真实 LLM 测试生成、PDF 导出检查，以及明文 API Key 扫描。

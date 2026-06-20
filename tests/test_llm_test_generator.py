@@ -6,7 +6,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 from src.agents.llm_test_generator import generate_llm_pytest_tests
-from src.llm.client import StaticLLMClient, _chat_completions_url, _extract_chat_content
+from src.llm.client import _chat_completions_url, _extract_chat_content
 from src.llm.config import LLMConfig
 from src.tools.llm_test_writer import llm_test_report_to_dict
 from src.tools.repo_scanner import scan_repository
@@ -29,6 +29,14 @@ def test_calculator_divide_llm():
 ```"""
 
 
+class FakeLLMClient:
+    def __init__(self, content: str) -> None:
+        self.content = content
+
+    def generate(self, prompt) -> str:
+        return self.content
+
+
 class LLMTestGeneratorAgentTest(unittest.TestCase):
     def setUp(self) -> None:
         self.temp_dir = tempfile.TemporaryDirectory()
@@ -38,7 +46,7 @@ class LLMTestGeneratorAgentTest(unittest.TestCase):
     def tearDown(self) -> None:
         self.temp_dir.cleanup()
 
-    def test_skips_without_api_key_or_mock_client(self) -> None:
+    def test_skips_without_api_key_or_injected_client(self) -> None:
         scan = scan_repository(self.project_path)
         with patch.dict("os.environ", {}, clear=True):
             report = generate_llm_pytest_tests(self.project_path, scan)
@@ -49,12 +57,12 @@ class LLMTestGeneratorAgentTest(unittest.TestCase):
         self.assertIsNone(report.security_check)
         self.assertEqual(0, report.generated_test_count)
 
-    def test_generates_tests_with_static_llm_client(self) -> None:
+    def test_generates_tests_with_injected_llm_client(self) -> None:
         scan = scan_repository(self.project_path)
         report = generate_llm_pytest_tests(
             self.project_path,
             scan,
-            client=StaticLLMClient(LLM_RESPONSE),
+            client=FakeLLMClient(LLM_RESPONSE),
         )
 
         self.assertEqual("generated", report.status)
@@ -70,7 +78,7 @@ class LLMTestGeneratorAgentTest(unittest.TestCase):
             self.project_path,
             scan,
             apply_changes=True,
-            client=StaticLLMClient(LLM_RESPONSE),
+            client=FakeLLMClient(LLM_RESPONSE),
         )
         target_file = self.project_path / report.test_file_path
 
@@ -90,7 +98,7 @@ class LLMTestGeneratorAgentTest(unittest.TestCase):
         report = generate_llm_pytest_tests(
             self.project_path,
             scan,
-            client=StaticLLMClient(LLM_RESPONSE),
+            client=FakeLLMClient(LLM_RESPONSE),
             config=config,
         )
         data = llm_test_report_to_dict(report)

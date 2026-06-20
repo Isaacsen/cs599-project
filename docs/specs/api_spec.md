@@ -208,7 +208,7 @@ Security Check: passed
 ### 1.6 运行软件工程师 Agent
 
 ```bash
-python -m src.engineer <project_path> [--output PATH] [--apply-fixes] [--apply-tests] [--use-llm-tests] [--mock-llm-response PATH] [--test-file PATH] [--llm-test-file PATH] [--max-functions N]
+python -m src.engineer <project_path> [--output PATH] [--apply-fixes] [--apply-tests] [--use-llm-review] [--use-llm-tests] [--run-sandbox] [--sandbox-executor local|docker] [--docker-image IMAGE] [--timeout SECONDS] [--repair-iterations N] [--test-file PATH] [--llm-test-file PATH] [--max-functions N]
 ```
 
 参数：
@@ -217,8 +217,13 @@ python -m src.engineer <project_path> [--output PATH] [--apply-fixes] [--apply-t
 - `--output`：统一软件工程师报告输出路径，默认 `docs/runs/software_engineer.json`。
 - `--apply-fixes`：可选开关，启用后应用安全修复。
 - `--apply-tests`：可选开关，启用后写入生成的 pytest 测试。
+- `--use-llm-review`：可选开关，启用真实 LLM 代码审查节点。
 - `--use-llm-tests`：可选开关，启用后在 LangGraph 工作流中追加 LLM 测试生成节点。
-- `--mock-llm-response`：可选离线 mock response 文件，用于课程演示和无网络测试。
+- `--run-sandbox`：可选开关，启用沙箱验证节点。
+- `--sandbox-executor`：沙箱验证后端，支持 `local` 或 `docker`，默认 `docker`。
+- `--docker-image`：Docker 沙箱镜像，默认 `testguard-python:latest`。
+- `--timeout`：沙箱验证超时时间，默认 30 秒。
+- `--repair-iterations`：修复循环规划预算，默认 1。
 - `--test-file`：启用 `--apply-tests` 时写入的项目内测试文件路径，默认 `tests/test_testguard_generated.py`。
 - `--llm-test-file`：启用 `--apply-tests` 时写入的 LLM 生成测试文件路径，默认 `tests/test_testguard_llm_generated.py`。
 - `--max-functions`：最多考虑的公开函数数量，默认 8。
@@ -226,7 +231,7 @@ python -m src.engineer <project_path> [--output PATH] [--apply-fixes] [--apply-t
 示例：
 
 ```bash
-python -m src.engineer examples/review_target --use-llm-tests --mock-llm-response examples/llm_response/review_target_response.md --output docs/runs/software_engineer.json
+python -m src.engineer examples/review_target --use-llm-review --use-llm-tests --run-sandbox --sandbox-executor docker --output docs/runs/software_engineer.json
 ```
 
 输出：
@@ -237,18 +242,22 @@ python -m src.engineer examples/review_target --use-llm-tests --mock-llm-respons
 Project: examples/review_target
 Status: completed
 Runtime: langgraph
-Node Trace: scan -> review -> fix -> unit_tests -> llm_tests -> finish
+Node Trace: scan -> review -> llm_review -> fix -> patch_review -> unit_tests -> llm_tests -> sandbox_validate -> repair_loop -> coverage_feedback -> finish
 
 Review Findings: 7
+LLM Review Findings: 4
 Fix Edits: 6
+Patch Review: passed
 Generated Unit Tests: 3
 Generated LLM Tests: 3
+Sandbox Validation: passed
+Coverage Feedback: 100%
 ```
 
 ### 1.7 运行 LLM 测试生成 Agent
 
 ```bash
-python -m src.llm_tests <project_path> [--output PATH] [--test-file PATH] [--max-functions N] [--mock-response PATH] [--apply]
+python -m src.llm_tests <project_path> [--output PATH] [--test-file PATH] [--max-functions N] [--apply]
 ```
 
 参数：
@@ -257,13 +266,12 @@ python -m src.llm_tests <project_path> [--output PATH] [--test-file PATH] [--max
 - `--output`：LLM 测试生成 JSON 输出路径，默认 `docs/runs/llm_tests.json`。
 - `--test-file`：启用 `--apply` 时写入的项目内测试文件路径，默认 `tests/test_testguard_llm_generated.py`。
 - `--max-functions`：最多考虑的公开函数数量，默认 8。
-- `--mock-response`：可选离线 mock response 文件，用于无网络或无 API Key 的演示。
 - `--apply`：可选开关，启用后将 LLM 生成的 pytest 文件写入目标项目；不传入时只生成 dry-run 报告。
 
 示例：
 
 ```bash
-python -m src.llm_tests examples/sample_python_project --mock-response examples/llm_response/pytest_response.md --output docs/runs/llm_tests.json
+python -m src.llm_tests examples/sample_python_project --output docs/runs/llm_tests.json
 ```
 
 输出：

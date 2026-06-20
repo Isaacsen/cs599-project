@@ -50,14 +50,6 @@ class OpenAICompatibleLLMClient:
         return _extract_chat_content(json.loads(body))
 
 
-class StaticLLMClient:
-    def __init__(self, content: str) -> None:
-        self.content = content
-
-    def generate(self, prompt: LLMTestPrompt) -> str:
-        return self.content
-
-
 def _chat_completions_url(base_url: str) -> str:
     cleaned = base_url.rstrip("/")
     if cleaned.endswith("/chat/completions"):

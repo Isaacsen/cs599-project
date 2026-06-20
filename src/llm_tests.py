@@ -2,10 +2,8 @@ from __future__ import annotations
 
 import argparse
 import sys
-from pathlib import Path
 
 from src.agents.llm_test_generator import format_llm_test_generation_report, generate_llm_pytest_tests
-from src.llm.client import StaticLLMClient
 from src.tools.llm_test_writer import write_llm_test_report
 from src.tools.repo_scanner import scan_repository
 
@@ -30,10 +28,6 @@ def build_parser() -> argparse.ArgumentParser:
         help="Maximum public functions to consider for generated tests.",
     )
     parser.add_argument(
-        "--mock-response",
-        help="Optional file containing an LLM response for offline demos and tests.",
-    )
-    parser.add_argument(
         "--apply",
         action="store_true",
         help="Write generated pytest tests to the target project. Omit for dry-run planning.",
@@ -47,14 +41,12 @@ def main() -> int:
 
     try:
         scan = scan_repository(args.project_path)
-        client = _load_mock_client(args.mock_response)
         report = generate_llm_pytest_tests(
             args.project_path,
             scan,
             apply_changes=args.apply,
             test_file_path=args.test_file,
             max_functions=args.max_functions,
-            client=client,
         )
         output_path = write_llm_test_report(report, args.output)
     except Exception as exc:
@@ -64,12 +56,6 @@ def main() -> int:
     print(format_llm_test_generation_report(report))
     print(f"\nLLM Test Report: {output_path}")
     return 0 if report.status != "security_failed" else 1
-
-
-def _load_mock_client(path: str | None) -> StaticLLMClient | None:
-    if not path:
-        return None
-    return StaticLLMClient(Path(path).read_text(encoding="utf-8"))
 
 
 if __name__ == "__main__":

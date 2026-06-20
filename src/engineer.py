@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import argparse
 import sys
-from pathlib import Path
 
 from src.tools.software_engineer_graph_writer import write_software_engineer_graph_result
 from src.workflow.software_engineer_graph import (
@@ -35,8 +34,37 @@ def build_parser() -> argparse.ArgumentParser:
         help="Run the LLM Test Generator node after unit-test generation.",
     )
     parser.add_argument(
-        "--mock-llm-response",
-        help="Optional file containing an LLM response for offline graph demos.",
+        "--use-llm-review",
+        action="store_true",
+        help="Run the LLM Code Review node after rule-based review.",
+    )
+    parser.add_argument(
+        "--run-sandbox",
+        action="store_true",
+        help="Run generated tests through the sandbox validation node.",
+    )
+    parser.add_argument(
+        "--sandbox-executor",
+        choices=("local", "docker"),
+        default="docker",
+        help="Sandbox validation backend.",
+    )
+    parser.add_argument(
+        "--docker-image",
+        default="testguard-python:latest",
+        help="Docker image used by sandbox validation.",
+    )
+    parser.add_argument(
+        "--timeout",
+        type=int,
+        default=30,
+        help="Timeout in seconds for sandbox validation.",
+    )
+    parser.add_argument(
+        "--repair-iterations",
+        type=int,
+        default=1,
+        help="Maximum repair-loop iterations to plan.",
     )
     parser.add_argument(
         "--test-file",
@@ -62,16 +90,20 @@ def main() -> int:
     args = parser.parse_args()
 
     try:
-        mock_response = _read_optional_file(args.mock_llm_response)
         report = run_software_engineer_graph(
             args.project_path,
             apply_fixes=args.apply_fixes,
             apply_tests=args.apply_tests,
+            use_llm_review=args.use_llm_review,
             use_llm_tests=args.use_llm_tests,
+            run_sandbox=args.run_sandbox,
+            sandbox_executor=args.sandbox_executor,
+            docker_image=args.docker_image,
+            timeout_seconds=args.timeout,
+            repair_iterations=args.repair_iterations,
             test_file_path=args.test_file,
             llm_test_file_path=args.llm_test_file,
             max_functions=args.max_functions,
-            mock_llm_response=mock_response,
         )
         output_path = write_software_engineer_graph_result(report, args.output)
     except Exception as exc:
@@ -81,12 +113,6 @@ def main() -> int:
     print(format_software_engineer_graph_result(report))
     print(f"\nSoftware Engineer Report: {output_path}")
     return 0
-
-
-def _read_optional_file(path: str | None) -> str | None:
-    if not path:
-        return None
-    return Path(path).read_text(encoding="utf-8")
 
 
 if __name__ == "__main__":
