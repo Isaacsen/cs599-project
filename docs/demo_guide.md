@@ -13,7 +13,7 @@ Python 项目
   -> Docker Sandbox Executor
   -> Result Analyzer Agent
   -> Failure Diagnoser Agent
-  -> JSON Report / Benchmark Report / LLM Prompt / Code Review Report
+  -> JSON Report / Benchmark Report / LLM Prompt / Code Review Report / Fix Plan
 ```
 
 ## 准备步骤
@@ -89,6 +89,18 @@ python -m src.review examples/review_target --output docs/runs/review.json
 - 识别危险调用、疑似硬编码密钥、宽泛异常处理、缺失测试覆盖和除零边界风险。
 - 审查报告写入 `docs/runs/review.json`。
 
+### 5. 生成自动修 Bug 计划
+
+```bash
+python -m src.fix examples/review_target --output docs/runs/fix_plan.json
+```
+
+演示要点：
+
+- 默认 dry-run，不修改样例源码。
+- 输出可应用的安全修复，包括 `eval` 替换、环境变量读取、异常收窄和除零保护。
+- 修复计划写入 `docs/runs/fix_plan.json`。
+
 ## 5 分钟展示建议
 
 1. 30 秒：介绍问题，说明人工写测试成本高，LLM 生成测试需要权限隔离。
@@ -97,7 +109,8 @@ python -m src.review examples/review_target --output docs/runs/review.json
 4. 60 秒：打开 `sample_run.json`，展示测试计划、安全检查、诊断和结果分析。
 5. 40 秒：运行 Benchmark 或展示 `benchmark.json`。
 6. 30 秒：运行代码审查或展示 `review.json`。
-7. 20 秒：展示 `llm_prompt.json`，说明后续可接入 DashScope/DeepSeek/OpenAI/Ollama。
+7. 30 秒：展示 `fix_plan.json`，说明自动修 Bug 默认 dry-run。
+8. 20 秒：展示 `llm_prompt.json`，说明后续可接入 DashScope/DeepSeek/OpenAI/Ollama。
 
 ## 兜底方案
 
@@ -107,5 +120,6 @@ python -m src.review examples/review_target --output docs/runs/review.json
 - `docs/runs/benchmark.json`
 - `docs/runs/llm_prompt.json`
 - `docs/runs/review.json`
+- `docs/runs/fix_plan.json`
 
 这些文件记录了完整 Demo 的可复现输出。

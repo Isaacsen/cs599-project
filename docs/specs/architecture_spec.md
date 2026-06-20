@@ -2,7 +2,7 @@
 
 ## 1. 架构目标
 
-TestGuard Agent 采用分层架构，将代码理解、测试规划、测试生成、隔离执行、结果分析和代码审查解耦。第一阶段实现仓库扫描与本地测试执行，第二阶段加入 Docker 沙箱执行器，第三阶段加入可离线演示的测试规划与生成 Agent，第四阶段加入结果分析与 JSON 运行报告，第五阶段加入 Benchmark 评估，第六阶段加入失败诊断与修复建议，第七阶段显式化生成测试安全检查，第八阶段加入 LLM Prompt 导出，第九阶段加入代码审查 Agent。
+TestGuard Agent 采用分层架构，将代码理解、测试规划、测试生成、隔离执行、结果分析、代码审查和自动修 Bug 解耦。第一阶段实现仓库扫描与本地测试执行，第二阶段加入 Docker 沙箱执行器，第三阶段加入可离线演示的测试规划与生成 Agent，第四阶段加入结果分析与 JSON 运行报告，第五阶段加入 Benchmark 评估，第六阶段加入失败诊断与修复建议，第七阶段显式化生成测试安全检查，第八阶段加入 LLM Prompt 导出，第九阶段加入代码审查 Agent，第十阶段加入自动修 Bug Agent。
 
 ## 2. 总体流程
 
@@ -72,6 +72,15 @@ Repo Scanner
   -> Code Reviewer Agent
   -> Review JSON Writer
   -> CLI Review Report
+```
+
+第十阶段自动修 Bug 流程：
+
+```text
+Repo Scanner
+  -> Bug Fixer Agent
+  -> Fix Plan Writer
+  -> Optional Source Apply
 ```
 
 ## 3. 模块设计
@@ -252,7 +261,18 @@ Repo Scanner
 - 发现疑似硬编码密钥、宽泛异常处理、缺失测试覆盖和除零边界风险。
 - 输出 `ReviewFinding` 列表，供 CLI 和 JSON 报告消费。
 
-### 3.17 Future Agent Modules
+### 3.17 Bug Fixer Agent
+
+位置：`src/agents/bug_fixer.py`
+
+职责：
+
+- 使用 AST 与行级变换生成安全修复计划。
+- 默认 dry-run，输出 `FixPlan`，不修改目标源码。
+- 在用户显式启用 `--apply` 时写回目标文件。
+- 当前支持 `eval` 替换、疑似密钥环境变量化、宽泛异常收窄和除零保护。
+
+### 3.18 Future Agent Modules
 
 位置：`src/agents/`
 
@@ -311,6 +331,14 @@ RepositoryScanResult
   -> Code Reviewer Agent
   -> ReviewReport
   -> Review JSON Artifact
+
+Bug Fix Flow:
+
+RepositoryScanResult
+  -> Bug Fixer Agent
+  -> FixPlan
+  -> Fix Plan JSON Artifact
+  -> Optional Source Apply
 ```
 
 ## 6. 可观测性
@@ -330,6 +358,7 @@ RepositoryScanResult
 - LLM Prompt JSON 工件。
 - Benchmark 汇总指标。
 - Code Review JSON 工件。
+- Bug Fix Plan JSON 工件。
 
 后续将扩展为：
 

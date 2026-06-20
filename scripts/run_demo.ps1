@@ -26,4 +26,7 @@ Write-Host "`n[TestGuard Demo] Run benchmark"
 Write-Host "`n[TestGuard Demo] Run code review agent"
 & $Python -m src.review examples/review_target --output docs/runs/review.json
 
+Write-Host "`n[TestGuard Demo] Generate bug fix plan"
+& $Python -m src.fix examples/review_target --output docs/runs/fix_plan.json
+
 Write-Host "`n[TestGuard Demo] Done"

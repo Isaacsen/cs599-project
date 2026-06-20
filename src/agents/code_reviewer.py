@@ -131,7 +131,7 @@ def _review_function(relative_file: str, node: ast.FunctionDef, test_text: str) 
             )
         )
 
-    if _contains_division(node) and not _has_zero_division_test(node.name, test_text):
+    if _contains_division(node) and not _has_zero_division_test(node.name, test_text) and not _has_zero_division_guard(node):
         findings.append(
             ReviewFinding(
                 file_path=relative_file,
@@ -224,6 +224,21 @@ def _has_zero_division_test(function_name: str, test_text: str) -> bool:
 
 def _contains_division(node: ast.FunctionDef) -> bool:
     return any(isinstance(child, ast.BinOp) and isinstance(child.op, ast.Div) for child in ast.walk(node))
+
+
+def _has_zero_division_guard(node: ast.FunctionDef) -> bool:
+    return any(_raises_zero_division(child) for child in ast.walk(node))
+
+
+def _raises_zero_division(node: ast.AST) -> bool:
+    if not isinstance(node, ast.Raise):
+        return False
+    exc = node.exc
+    if isinstance(exc, ast.Name):
+        return exc.id == "ZeroDivisionError"
+    if isinstance(exc, ast.Call) and isinstance(exc.func, ast.Name):
+        return exc.func.id == "ZeroDivisionError"
+    return False
 
 
 def _call_name(node: ast.Call) -> str:

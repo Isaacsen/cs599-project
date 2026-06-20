@@ -143,6 +143,35 @@ Medium: 5
 Low: 0
 ```
 
+### 1.4 生成自动修 Bug 计划
+
+```bash
+python -m src.fix <project_path> [--output PATH] [--apply]
+```
+
+参数：
+
+- `project_path`：待分析或修复的 Python 项目路径。
+- `--output`：修复计划 JSON 输出路径，默认 `docs/runs/fix_plan.json`。
+- `--apply`：可选开关，启用后将安全修复写回目标项目；不传入时只生成 dry-run 计划。
+
+示例：
+
+```bash
+python -m src.fix examples/review_target --output docs/runs/fix_plan.json
+```
+
+输出：
+
+```text
+[TestGuard Bug Fix]
+
+Project: examples/review_target
+Applied: False
+Edits: 6
+Files Changed: 1
+```
+
 ## 2. 内部数据结构
 
 ### 2.1 RepositoryScanResult
@@ -284,6 +313,30 @@ Low: 0
 - `rule: str`
 - `message: str`
 - `suggestion: str`
+
+### 2.15 FixPlan
+
+字段：
+
+- `project_path: str`
+- `applied: bool`
+- `edits: list[FixEdit]`
+
+派生统计：
+
+- `edit_count: int`
+- `files_changed: int`
+
+### 2.16 FixEdit
+
+字段：
+
+- `file_path: str`
+- `line: int`
+- `rule: str`
+- `description: str`
+- `before: str`
+- `after: str`
 
 ## 3. 后续 HTTP API 规划
 

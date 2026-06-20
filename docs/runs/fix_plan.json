@@ -1,0 +1,58 @@
+{
+  "project_path": "G:\\cs599-project\\examples\\review_target",
+  "applied": false,
+  "summary": {
+    "edit_count": 6,
+    "files_changed": 1
+  },
+  "edits": [
+    {
+      "file_path": "risky_module.py",
+      "line": 2,
+      "rule": "division_guard_fix",
+      "description": "Add an explicit zero-division guard before division.",
+      "before": "return a / b",
+      "after": "if b == 0:\n        raise ZeroDivisionError(\"division by zero\")\n    return a / b"
+    },
+    {
+      "file_path": "risky_module.py",
+      "line": 9,
+      "rule": "hardcoded_secret_fix",
+      "description": "Move the value behind an environment variable lookup.",
+      "before": "API_TOKEN = \"unit-test-placeholder\"",
+      "after": "API_TOKEN = os.getenv(\"API_TOKEN\", \"\")"
+    },
+    {
+      "file_path": "risky_module.py",
+      "line": 6,
+      "rule": "dangerous_eval_fix",
+      "description": "Replace eval with ast.literal_eval for safer literal parsing.",
+      "before": "return eval(expression)",
+      "after": "return ast.literal_eval(expression)"
+    },
+    {
+      "file_path": "risky_module.py",
+      "line": 15,
+      "rule": "broad_exception_fix",
+      "description": "Narrow broad exception handling to ValueError for simple parsing failures.",
+      "before": "except Exception:",
+      "after": "except ValueError:"
+    },
+    {
+      "file_path": "risky_module.py",
+      "line": 1,
+      "rule": "support_import_fix",
+      "description": "Add import required by automatic fix: ast.",
+      "before": "",
+      "after": "import ast"
+    },
+    {
+      "file_path": "risky_module.py",
+      "line": 1,
+      "rule": "support_import_fix",
+      "description": "Add import required by automatic fix: os.",
+      "before": "",
+      "after": "import os"
+    }
+  ]
+}
