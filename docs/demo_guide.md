@@ -13,7 +13,7 @@ Python 项目
   -> Docker Sandbox Executor
   -> Result Analyzer Agent
   -> Failure Diagnoser Agent
-  -> JSON Report / Benchmark Report / LLM Prompt
+  -> JSON Report / Benchmark Report / LLM Prompt / Code Review Report
 ```
 
 ## 准备步骤
@@ -77,6 +77,18 @@ python -m src.benchmark --executor docker --output docs/runs/benchmark.json
 - 输出 pytest 用例数量、规划测试数量、生成测试数量。
 - Benchmark JSON 可作为最终报告的测试与评估证据。
 
+### 4. 运行代码审查 Agent
+
+```bash
+python -m src.review examples/review_target --output docs/runs/review.json
+```
+
+演示要点：
+
+- 扫描 `examples/review_target` 中的风险样例。
+- 识别危险调用、疑似硬编码密钥、宽泛异常处理、缺失测试覆盖和除零边界风险。
+- 审查报告写入 `docs/runs/review.json`。
+
 ## 5 分钟展示建议
 
 1. 30 秒：介绍问题，说明人工写测试成本高，LLM 生成测试需要权限隔离。
@@ -84,7 +96,8 @@ python -m src.benchmark --executor docker --output docs/runs/benchmark.json
 3. 90 秒：运行 Docker 沙箱 Demo。
 4. 60 秒：打开 `sample_run.json`，展示测试计划、安全检查、诊断和结果分析。
 5. 40 秒：运行 Benchmark 或展示 `benchmark.json`。
-6. 20 秒：展示 `llm_prompt.json`，说明后续可接入 DeepSeek/OpenAI/Ollama。
+6. 30 秒：运行代码审查或展示 `review.json`。
+7. 20 秒：展示 `llm_prompt.json`，说明后续可接入 DashScope/DeepSeek/OpenAI/Ollama。
 
 ## 兜底方案
 
@@ -93,5 +106,6 @@ python -m src.benchmark --executor docker --output docs/runs/benchmark.json
 - `docs/runs/sample_run.json`
 - `docs/runs/benchmark.json`
 - `docs/runs/llm_prompt.json`
+- `docs/runs/review.json`
 
 这些文件记录了完整 Demo 的可复现输出。

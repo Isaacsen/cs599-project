@@ -23,4 +23,7 @@ Write-Host "`n[TestGuard Demo] Export LLM prompt"
 Write-Host "`n[TestGuard Demo] Run benchmark"
 & $Python -m src.benchmark --executor docker --docker-image $DockerImage --output docs/runs/benchmark.json
 
+Write-Host "`n[TestGuard Demo] Run code review agent"
+& $Python -m src.review examples/review_target --output docs/runs/review.json
+
 Write-Host "`n[TestGuard Demo] Done"

@@ -114,6 +114,35 @@ Generated Test Cases: 2
 Total Duration: 1.00s
 ```
 
+### 1.3 执行代码审查
+
+```bash
+python -m src.review <project_path> [--output PATH]
+```
+
+参数：
+
+- `project_path`：待审查的 Python 项目路径。
+- `--output`：代码审查 JSON 输出路径，默认 `docs/runs/review.json`。
+
+示例：
+
+```bash
+python -m src.review examples/review_target --output docs/runs/review.json
+```
+
+输出：
+
+```text
+[TestGuard Code Review]
+
+Project: examples/review_target
+Findings: 7
+High: 2
+Medium: 5
+Low: 0
+```
+
 ## 2. 内部数据结构
 
 ### 2.1 RepositoryScanResult
@@ -230,6 +259,31 @@ Total Duration: 1.00s
 - `system: str`
 - `user: str`
 - `covered_functions: list[str]`
+
+### 2.13 ReviewReport
+
+字段：
+
+- `project_path: str`
+- `findings: list[ReviewFinding]`
+
+派生统计：
+
+- `finding_count: int`
+- `high_count: int`
+- `medium_count: int`
+- `low_count: int`
+
+### 2.14 ReviewFinding
+
+字段：
+
+- `file_path: str`
+- `line: int`
+- `severity: str`
+- `rule: str`
+- `message: str`
+- `suggestion: str`
 
 ## 3. 后续 HTTP API 规划
 

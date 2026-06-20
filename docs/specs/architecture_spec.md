@@ -2,7 +2,7 @@
 
 ## 1. 架构目标
 
-TestGuard Agent 采用分层架构，将代码理解、测试规划、测试生成、隔离执行和结果分析解耦。第一阶段实现仓库扫描与本地测试执行，第二阶段加入 Docker 沙箱执行器，第三阶段加入可离线演示的测试规划与生成 Agent，第四阶段加入结果分析与 JSON 运行报告，第五阶段加入 Benchmark 评估，第六阶段加入失败诊断与修复建议，第七阶段显式化生成测试安全检查，第八阶段加入 LLM Prompt 导出。
+TestGuard Agent 采用分层架构，将代码理解、测试规划、测试生成、隔离执行、结果分析和代码审查解耦。第一阶段实现仓库扫描与本地测试执行，第二阶段加入 Docker 沙箱执行器，第三阶段加入可离线演示的测试规划与生成 Agent，第四阶段加入结果分析与 JSON 运行报告，第五阶段加入 Benchmark 评估，第六阶段加入失败诊断与修复建议，第七阶段显式化生成测试安全检查，第八阶段加入 LLM Prompt 导出，第九阶段加入代码审查 Agent。
 
 ## 2. 总体流程
 
@@ -63,6 +63,15 @@ TestPlan
   -> Source Context Collector
   -> LLM Prompt Builder
   -> Prompt JSON Artifact
+```
+
+第九阶段代码审查流程：
+
+```text
+Repo Scanner
+  -> Code Reviewer Agent
+  -> Review JSON Writer
+  -> CLI Review Report
 ```
 
 ## 3. 模块设计
@@ -221,7 +230,7 @@ TestPlan
 - 根据 TestPlan 和源码上下文构造 LLM 测试生成 Prompt。
 - 在 system prompt 中写入安全约束。
 - 控制源码上下文长度，避免 Prompt 过大。
-- 支持后续接入 DeepSeek、OpenAI 或 Ollama。
+- 支持后续接入 DashScope、DeepSeek、OpenAI 或 Ollama。
 
 ### 3.15 LLM Config
 
@@ -232,7 +241,18 @@ TestPlan
 - 从环境变量读取 LLM provider、model 和 API Key 是否存在。
 - 只记录 `api_key_set` 布尔值，不写出 API Key 明文。
 
-### 3.16 Future Agent Modules
+### 3.16 Code Reviewer Agent
+
+位置：`src/agents/code_reviewer.py`
+
+职责：
+
+- 使用 Python AST 审查源码文件。
+- 发现危险调用，如 `eval`、`exec`、`__import__` 和 `subprocess.*`。
+- 发现疑似硬编码密钥、宽泛异常处理、缺失测试覆盖和除零边界风险。
+- 输出 `ReviewFinding` 列表，供 CLI 和 JSON 报告消费。
+
+### 3.17 Future Agent Modules
 
 位置：`src/agents/`
 
@@ -284,6 +304,13 @@ TestPlan
   -> Source Context
   -> LLMTestPrompt
   -> Prompt JSON Artifact
+
+Code Review Flow:
+
+RepositoryScanResult
+  -> Code Reviewer Agent
+  -> ReviewReport
+  -> Review JSON Artifact
 ```
 
 ## 6. 可观测性
@@ -302,6 +329,7 @@ TestPlan
 - JSON 运行报告。
 - LLM Prompt JSON 工件。
 - Benchmark 汇总指标。
+- Code Review JSON 工件。
 
 后续将扩展为：
 

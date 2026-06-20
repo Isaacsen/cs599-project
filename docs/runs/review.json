@@ -1,0 +1,67 @@
+{
+  "project_path": "G:\\cs599-project\\examples\\review_target",
+  "summary": {
+    "finding_count": 7,
+    "high_count": 2,
+    "medium_count": 5,
+    "low_count": 0
+  },
+  "findings": [
+    {
+      "file_path": "risky_module.py",
+      "line": 1,
+      "severity": "medium",
+      "rule": "division_risk",
+      "message": "Function 'divide' performs division without an obvious zero-division test.",
+      "suggestion": "Add a boundary test for denominator zero or document the expected exception."
+    },
+    {
+      "file_path": "risky_module.py",
+      "line": 1,
+      "severity": "medium",
+      "rule": "missing_test",
+      "message": "Public function 'divide' is not referenced by existing tests.",
+      "suggestion": "Generate or add pytest coverage for the public function."
+    },
+    {
+      "file_path": "risky_module.py",
+      "line": 5,
+      "severity": "medium",
+      "rule": "missing_test",
+      "message": "Public function 'parse_expression' is not referenced by existing tests.",
+      "suggestion": "Generate or add pytest coverage for the public function."
+    },
+    {
+      "file_path": "risky_module.py",
+      "line": 6,
+      "severity": "high",
+      "rule": "dangerous_call",
+      "message": "Dangerous call 'eval' was found.",
+      "suggestion": "Remove the call or isolate it behind a safe, reviewed tool interface."
+    },
+    {
+      "file_path": "risky_module.py",
+      "line": 9,
+      "severity": "high",
+      "rule": "hardcoded_secret",
+      "message": "Possible hardcoded secret was found in source code.",
+      "suggestion": "Move secrets to environment variables and keep only placeholders in the repository."
+    },
+    {
+      "file_path": "risky_module.py",
+      "line": 12,
+      "severity": "medium",
+      "rule": "missing_test",
+      "message": "Public function 'hide_error' is not referenced by existing tests.",
+      "suggestion": "Generate or add pytest coverage for the public function."
+    },
+    {
+      "file_path": "risky_module.py",
+      "line": 15,
+      "severity": "medium",
+      "rule": "broad_exception",
+      "message": "Broad exception handler 'Exception' can hide real failures.",
+      "suggestion": "Catch a narrower exception type and keep the error observable."
+    }
+  ]
+}
