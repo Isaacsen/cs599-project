@@ -2,7 +2,7 @@
 
 ## 1. 架构目标
 
-TestGuard Agent 采用分层架构，将代码理解、测试规划、测试生成、隔离执行、结果分析、代码审查、自动修 Bug 和单测生成解耦。第一阶段实现仓库扫描与本地测试执行，第二阶段加入 Docker 沙箱执行器，第三阶段加入可离线演示的测试规划与生成 Agent，第四阶段加入结果分析与 JSON 运行报告，第五阶段加入 Benchmark 评估，第六阶段加入失败诊断与修复建议，第七阶段显式化生成测试安全检查，第八阶段加入 LLM Prompt 导出，第九阶段加入代码审查 Agent，第十阶段加入自动修 Bug Agent，第十一阶段加入缺失覆盖单测生成 Agent。
+TestGuard Agent 采用分层架构，将代码理解、测试规划、测试生成、隔离执行、结果分析、代码审查、自动修 Bug、单测生成和软件工程师编排解耦。第一阶段实现仓库扫描与本地测试执行，第二阶段加入 Docker 沙箱执行器，第三阶段加入可离线演示的测试规划与生成 Agent，第四阶段加入结果分析与 JSON 运行报告，第五阶段加入 Benchmark 评估，第六阶段加入失败诊断与修复建议，第七阶段显式化生成测试安全检查，第八阶段加入 LLM Prompt 导出，第九阶段加入代码审查 Agent，第十阶段加入自动修 Bug Agent，第十一阶段加入缺失覆盖单测生成 Agent，第十二阶段加入软件工程师 Agent 编排入口。
 
 ## 2. 总体流程
 
@@ -91,6 +91,16 @@ Repo Scanner
   -> Security Checker
   -> Unit Test Report Writer
   -> Optional Test File Apply
+```
+
+第十二阶段软件工程师 Agent 流程：
+
+```text
+Repo Scanner
+  -> Code Reviewer Agent
+  -> Bug Fixer Agent
+  -> Unit Test Writer Agent
+  -> Software Engineer Report Writer
 ```
 
 ## 3. 模块设计
@@ -293,7 +303,18 @@ Repo Scanner
 - 复用 Security Checker 校验生成测试代码。
 - 默认 dry-run 输出 JSON 报告，`--apply` 时写入目标项目测试文件。
 
-### 3.19 Future Agent Modules
+### 3.19 Software Engineer Agent
+
+位置：`src/agents/software_engineer.py`
+
+职责：
+
+- 编排代码审查、自动修 Bug 计划和缺失覆盖单测生成。
+- 保持默认 dry-run，避免未经确认修改用户项目。
+- 将 `ReviewReport`、`FixPlan` 和 `UnitTestReport` 汇总为统一报告。
+- 为课程演示提供一个完整的软件工程师 Agent 入口。
+
+### 3.20 Future Agent Modules
 
 位置：`src/agents/`
 
@@ -369,6 +390,14 @@ RepositoryScanResult
   -> SecurityCheckResult
   -> Unit Test JSON Artifact
   -> Optional Test File Apply
+
+Software Engineer Flow:
+
+RepositoryScanResult
+  -> ReviewReport
+  -> FixPlan
+  -> UnitTestReport
+  -> Software Engineer JSON Artifact
 ```
 
 ## 6. 可观测性
@@ -390,6 +419,7 @@ RepositoryScanResult
 - Code Review JSON 工件。
 - Bug Fix Plan JSON 工件。
 - Unit Test Writer JSON 工件。
+- Software Engineer JSON 工件。
 
 后续将扩展为：
 

@@ -205,6 +205,39 @@ Generated Test Cases: 3
 Security Check: passed
 ```
 
+### 1.6 运行软件工程师 Agent
+
+```bash
+python -m src.engineer <project_path> [--output PATH] [--apply-fixes] [--apply-tests] [--test-file PATH] [--max-functions N]
+```
+
+参数：
+
+- `project_path`：待分析的 Python 项目路径。
+- `--output`：统一软件工程师报告输出路径，默认 `docs/runs/software_engineer.json`。
+- `--apply-fixes`：可选开关，启用后应用安全修复。
+- `--apply-tests`：可选开关，启用后写入生成的 pytest 测试。
+- `--test-file`：启用 `--apply-tests` 时写入的项目内测试文件路径，默认 `tests/test_testguard_generated.py`。
+- `--max-functions`：最多考虑的公开函数数量，默认 8。
+
+示例：
+
+```bash
+python -m src.engineer examples/review_target --output docs/runs/software_engineer.json
+```
+
+输出：
+
+```text
+[TestGuard Software Engineer Agent]
+
+Project: examples/review_target
+Review Findings: 7
+Fix Edits: 6
+Generated Test Cases: 3
+Unit Test Security: passed
+```
+
 ## 2. 内部数据结构
 
 ### 2.1 RepositoryScanResult
@@ -385,6 +418,22 @@ Security Check: passed
 派生统计：
 
 - `planned_test_count: int`
+- `generated_test_count: int`
+
+### 2.18 SoftwareEngineerReport
+
+字段：
+
+- `project_path: str`
+- `scan: RepositoryScanResult`
+- `review: ReviewReport`
+- `fix_plan: FixPlan`
+- `unit_tests: UnitTestReport`
+
+派生统计：
+
+- `finding_count: int`
+- `fix_edit_count: int`
 - `generated_test_count: int`
 
 ## 3. 后续 HTTP API 规划

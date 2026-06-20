@@ -32,4 +32,7 @@ Write-Host "`n[TestGuard Demo] Generate bug fix plan"
 Write-Host "`n[TestGuard Demo] Generate missing unit tests"
 & $Python -m src.unit_tests examples/review_target --output docs/runs/unit_tests.json
 
+Write-Host "`n[TestGuard Demo] Run software engineer agent"
+& $Python -m src.engineer examples/review_target --output docs/runs/software_engineer.json
+
 Write-Host "`n[TestGuard Demo] Done"

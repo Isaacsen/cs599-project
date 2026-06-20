@@ -13,7 +13,7 @@ Python 项目
   -> Docker Sandbox Executor
   -> Result Analyzer Agent
   -> Failure Diagnoser Agent
-  -> JSON Report / Benchmark Report / LLM Prompt / Code Review Report / Fix Plan / Unit Tests
+  -> JSON Report / Benchmark Report / LLM Prompt / Code Review Report / Fix Plan / Unit Tests / Engineer Report
 ```
 
 ## 准备步骤
@@ -114,6 +114,18 @@ python -m src.unit_tests examples/review_target --output docs/runs/unit_tests.js
 - 生成 pytest 测试内容，并通过 Security Checker。
 - 单测生成报告写入 `docs/runs/unit_tests.json`。
 
+### 7. 运行软件工程师 Agent
+
+```bash
+python -m src.engineer examples/review_target --output docs/runs/software_engineer.json
+```
+
+演示要点：
+
+- 串联代码审查、自动修 Bug 计划和缺失覆盖单测生成。
+- 默认 dry-run，不修改样例源码。
+- 统一报告写入 `docs/runs/software_engineer.json`。
+
 ## 5 分钟展示建议
 
 1. 30 秒：介绍问题，说明人工写测试成本高，LLM 生成测试需要权限隔离。
@@ -124,7 +136,8 @@ python -m src.unit_tests examples/review_target --output docs/runs/unit_tests.js
 6. 30 秒：运行代码审查或展示 `review.json`。
 7. 30 秒：展示 `fix_plan.json`，说明自动修 Bug 默认 dry-run。
 8. 30 秒：展示 `unit_tests.json`，说明缺失覆盖单测生成默认 dry-run。
-9. 20 秒：展示 `llm_prompt.json`，说明后续可接入 DashScope/DeepSeek/OpenAI/Ollama。
+9. 30 秒：运行软件工程师 Agent 或展示 `software_engineer.json`。
+10. 20 秒：展示 `llm_prompt.json`，说明后续可接入 DashScope/DeepSeek/OpenAI/Ollama。
 
 ## 兜底方案
 
@@ -136,5 +149,6 @@ python -m src.unit_tests examples/review_target --output docs/runs/unit_tests.js
 - `docs/runs/review.json`
 - `docs/runs/fix_plan.json`
 - `docs/runs/unit_tests.json`
+- `docs/runs/software_engineer.json`
 
 这些文件记录了完整 Demo 的可复现输出。

@@ -1,0 +1,189 @@
+{
+  "project_path": "G:\\cs599-project\\examples\\review_target",
+  "summary": {
+    "finding_count": 7,
+    "fix_edit_count": 6,
+    "generated_test_count": 3,
+    "fix_applied": false,
+    "unit_tests_applied": false
+  },
+  "scan": {
+    "project_path": "G:\\cs599-project\\examples\\review_target",
+    "language": "Python",
+    "test_framework": "pytest",
+    "source_files": [
+      "risky_module.py"
+    ],
+    "test_files": []
+  },
+  "review": {
+    "project_path": "G:\\cs599-project\\examples\\review_target",
+    "summary": {
+      "finding_count": 7,
+      "high_count": 2,
+      "medium_count": 5,
+      "low_count": 0
+    },
+    "findings": [
+      {
+        "file_path": "risky_module.py",
+        "line": 1,
+        "severity": "medium",
+        "rule": "division_risk",
+        "message": "Function 'divide' performs division without an obvious zero-division test.",
+        "suggestion": "Add a boundary test for denominator zero or document the expected exception."
+      },
+      {
+        "file_path": "risky_module.py",
+        "line": 1,
+        "severity": "medium",
+        "rule": "missing_test",
+        "message": "Public function 'divide' is not referenced by existing tests.",
+        "suggestion": "Generate or add pytest coverage for the public function."
+      },
+      {
+        "file_path": "risky_module.py",
+        "line": 5,
+        "severity": "medium",
+        "rule": "missing_test",
+        "message": "Public function 'parse_expression' is not referenced by existing tests.",
+        "suggestion": "Generate or add pytest coverage for the public function."
+      },
+      {
+        "file_path": "risky_module.py",
+        "line": 6,
+        "severity": "high",
+        "rule": "dangerous_call",
+        "message": "Dangerous call 'eval' was found.",
+        "suggestion": "Remove the call or isolate it behind a safe, reviewed tool interface."
+      },
+      {
+        "file_path": "risky_module.py",
+        "line": 9,
+        "severity": "high",
+        "rule": "hardcoded_secret",
+        "message": "Possible hardcoded secret was found in source code.",
+        "suggestion": "Move secrets to environment variables and keep only placeholders in the repository."
+      },
+      {
+        "file_path": "risky_module.py",
+        "line": 12,
+        "severity": "medium",
+        "rule": "missing_test",
+        "message": "Public function 'hide_error' is not referenced by existing tests.",
+        "suggestion": "Generate or add pytest coverage for the public function."
+      },
+      {
+        "file_path": "risky_module.py",
+        "line": 15,
+        "severity": "medium",
+        "rule": "broad_exception",
+        "message": "Broad exception handler 'Exception' can hide real failures.",
+        "suggestion": "Catch a narrower exception type and keep the error observable."
+      }
+    ]
+  },
+  "fix_plan": {
+    "project_path": "G:\\cs599-project\\examples\\review_target",
+    "applied": false,
+    "summary": {
+      "edit_count": 6,
+      "files_changed": 1
+    },
+    "edits": [
+      {
+        "file_path": "risky_module.py",
+        "line": 2,
+        "rule": "division_guard_fix",
+        "description": "Add an explicit zero-division guard before division.",
+        "before": "return a / b",
+        "after": "if b == 0:\n        raise ZeroDivisionError(\"division by zero\")\n    return a / b"
+      },
+      {
+        "file_path": "risky_module.py",
+        "line": 9,
+        "rule": "hardcoded_secret_fix",
+        "description": "Move the value behind an environment variable lookup.",
+        "before": "API_TOKEN = \"unit-test-placeholder\"",
+        "after": "API_TOKEN = os.getenv(\"API_TOKEN\", \"\")"
+      },
+      {
+        "file_path": "risky_module.py",
+        "line": 6,
+        "rule": "dangerous_eval_fix",
+        "description": "Replace eval with ast.literal_eval for safer literal parsing.",
+        "before": "return eval(expression)",
+        "after": "return ast.literal_eval(expression)"
+      },
+      {
+        "file_path": "risky_module.py",
+        "line": 15,
+        "rule": "broad_exception_fix",
+        "description": "Narrow broad exception handling to ValueError for simple parsing failures.",
+        "before": "except Exception:",
+        "after": "except ValueError:"
+      },
+      {
+        "file_path": "risky_module.py",
+        "line": 1,
+        "rule": "support_import_fix",
+        "description": "Add import required by automatic fix: ast.",
+        "before": "",
+        "after": "import ast"
+      },
+      {
+        "file_path": "risky_module.py",
+        "line": 1,
+        "rule": "support_import_fix",
+        "description": "Add import required by automatic fix: os.",
+        "before": "",
+        "after": "import os"
+      }
+    ]
+  },
+  "unit_tests": {
+    "project_path": "G:\\cs599-project\\examples\\review_target",
+    "applied": false,
+    "test_file_path": "tests/test_testguard_generated.py",
+    "summary": {
+      "planned_test_count": 3,
+      "generated_test_count": 3,
+      "security_check_passed": true
+    },
+    "test_plan": {
+      "items": [
+        {
+          "module_name": "risky_module",
+          "function_name": "divide",
+          "scenario": "division happy path and zero-division boundary",
+          "rationale": "Division-like functions need both normal input and denominator-zero coverage."
+        },
+        {
+          "module_name": "risky_module",
+          "function_name": "parse_expression",
+          "scenario": "public callable smoke test",
+          "rationale": "Unknown public functions should at least remain importable and callable."
+        },
+        {
+          "module_name": "risky_module",
+          "function_name": "hide_error",
+          "scenario": "public callable smoke test",
+          "rationale": "Unknown public functions should at least remain importable and callable."
+        }
+      ]
+    },
+    "security_check": {
+      "passed": true,
+      "violations": []
+    },
+    "suite": {
+      "test_file_name": "test_testguard_generated.py",
+      "content": "\"\"\"Generated by TestGuard Agent.\"\"\"\n\nimport pytest\n\nimport risky_module as risky_module\n\ndef test_risky_module_divide():\n    assert risky_module.divide(4, 2) == 2\n    with pytest.raises(ZeroDivisionError):\n        risky_module.divide(1, 0)\n\ndef test_risky_module_parse_expression():\n    assert callable(risky_module.parse_expression)\n\ndef test_risky_module_hide_error():\n    assert callable(risky_module.hide_error)\n",
+      "covered_functions": [
+        "risky_module.divide",
+        "risky_module.parse_expression",
+        "risky_module.hide_error"
+      ]
+    }
+  }
+}
