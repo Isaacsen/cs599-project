@@ -10,7 +10,7 @@
 
 - [x] SDD: `docs/specs/product_spec.md`, `docs/specs/architecture_spec.md`, `docs/specs/api_spec.md`.
 - [x] Tool use / Function Calling: repo scanner, security checker, sandbox executor, report writers, LLM client.
-- [x] State management and multi-step reasoning: `Software Engineer Agent` combines review, fix, and unit-test reports.
+- [x] State management and multi-step reasoning: LangGraph `StateGraph` coordinates scan, review, fix, unit-test, and optional LLM-test nodes.
 - [x] Multi-agent collaboration: Code Reviewer, Bug Fixer, Unit Test Writer, LLM Test Generator.
 - [x] Observability and evaluation: JSON artifacts and benchmark report.
 - [x] Permission isolation: Docker sandbox, dry-run apply gates, generated-code security checker.
@@ -20,7 +20,7 @@
 ```bash
 python -m unittest discover -s tests
 python -m compileall src tests examples
-python -m src.engineer examples/review_target --output docs/runs/software_engineer.json
+python -m src.engineer examples/review_target --use-llm-tests --mock-llm-response examples/llm_response/review_target_response.md --output docs/runs/software_engineer.json
 python -m src.llm_tests examples/sample_python_project --mock-response examples/llm_response/pytest_response.md --output docs/runs/llm_tests.json
 ```
 
@@ -46,6 +46,7 @@ scripts/final_verify.ps1
 - [x] `docs/runs/fix_plan.json`
 - [x] `docs/runs/unit_tests.json`
 - [x] `docs/runs/software_engineer.json`
+- [x] `docs/runs/software_engineer_graph.json`
 
 ## Final Manual Items
 

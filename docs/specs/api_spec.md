@@ -208,7 +208,7 @@ Security Check: passed
 ### 1.6 运行软件工程师 Agent
 
 ```bash
-python -m src.engineer <project_path> [--output PATH] [--apply-fixes] [--apply-tests] [--test-file PATH] [--max-functions N]
+python -m src.engineer <project_path> [--output PATH] [--apply-fixes] [--apply-tests] [--use-llm-tests] [--mock-llm-response PATH] [--test-file PATH] [--llm-test-file PATH] [--max-functions N]
 ```
 
 参数：
@@ -217,25 +217,32 @@ python -m src.engineer <project_path> [--output PATH] [--apply-fixes] [--apply-t
 - `--output`：统一软件工程师报告输出路径，默认 `docs/runs/software_engineer.json`。
 - `--apply-fixes`：可选开关，启用后应用安全修复。
 - `--apply-tests`：可选开关，启用后写入生成的 pytest 测试。
+- `--use-llm-tests`：可选开关，启用后在 LangGraph 工作流中追加 LLM 测试生成节点。
+- `--mock-llm-response`：可选离线 mock response 文件，用于课程演示和无网络测试。
 - `--test-file`：启用 `--apply-tests` 时写入的项目内测试文件路径，默认 `tests/test_testguard_generated.py`。
+- `--llm-test-file`：启用 `--apply-tests` 时写入的 LLM 生成测试文件路径，默认 `tests/test_testguard_llm_generated.py`。
 - `--max-functions`：最多考虑的公开函数数量，默认 8。
 
 示例：
 
 ```bash
-python -m src.engineer examples/review_target --output docs/runs/software_engineer.json
+python -m src.engineer examples/review_target --use-llm-tests --mock-llm-response examples/llm_response/review_target_response.md --output docs/runs/software_engineer.json
 ```
 
 输出：
 
 ```text
-[TestGuard Software Engineer Agent]
+[TestGuard Software Engineer LangGraph]
 
 Project: examples/review_target
+Status: completed
+Runtime: langgraph
+Node Trace: scan -> review -> fix -> unit_tests -> llm_tests -> finish
+
 Review Findings: 7
 Fix Edits: 6
-Generated Test Cases: 3
-Unit Test Security: passed
+Generated Unit Tests: 3
+Generated LLM Tests: 3
 ```
 
 ### 1.7 运行 LLM 测试生成 Agent
@@ -454,23 +461,39 @@ Security Check: passed
 - `planned_test_count: int`
 - `generated_test_count: int`
 
-### 2.18 SoftwareEngineerReport
+### 2.18 SoftwareEngineerGraphState
 
 字段：
 
 - `project_path: str`
+- `apply_fixes: bool`
+- `apply_tests: bool`
+- `use_llm_tests: bool`
 - `scan: RepositoryScanResult`
 - `review: ReviewReport`
 - `fix_plan: FixPlan`
 - `unit_tests: UnitTestReport`
+- `llm_tests: LLMTestGenerationReport | None`
+- `node_trace: list[str]`
+- `graph_runtime: str`
+- `status: str`
+
+### 2.19 SoftwareEngineerGraphResult
+
+字段：
+
+- `project_path: str`
+- `state: SoftwareEngineerGraphState`
 
 派生统计：
 
 - `finding_count: int`
 - `fix_edit_count: int`
-- `generated_test_count: int`
+- `generated_unit_test_count: int`
+- `generated_llm_test_count: int`
+- `node_trace: list[str]`
 
-### 2.19 LLMTestGenerationReport
+### 2.20 LLMTestGenerationReport
 
 字段：
 

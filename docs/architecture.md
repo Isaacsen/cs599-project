@@ -78,23 +78,26 @@ flowchart TD
 - `src.review`：代码审查。
 - `src.fix`：自动修 Bug 计划。
 - `src.unit_tests`：缺失覆盖单测生成。
-- `src.engineer`：统一软件工程师 Agent。
+- `src.engineer`：默认 LangGraph 软件工程师 Agent。
+- `src.engineer_graph`：显式 LangGraph 软件工程师 Agent 入口。
 - `src.llm_tests`：LLM 测试生成。
 - `src.benchmark`：评估与指标汇总。
 
 ### 3.2 Agent 编排层
 
-核心是 `Software Engineer Agent`：
+核心是基于 LangGraph `StateGraph` 的 `Software Engineer Agent`：
 
 ```text
-RepositoryScanResult
-  -> Code Reviewer Agent
-  -> Bug Fixer Agent
-  -> Unit Test Writer Agent
-  -> SoftwareEngineerReport
+scan
+  -> review
+  -> fix
+  -> unit_tests
+  -> optional llm_tests
+  -> finish
+  -> SoftwareEngineerGraphResult
 ```
 
-该层体现 Agentic AI 的多步骤推理与状态管理。每一步都产出结构化状态对象，后续步骤可以继续消费，最终合并为统一 JSON 报告。
+该层体现 Agentic AI 的多步骤推理与状态管理。每个节点都消费并返回结构化状态，最终合并为统一 JSON 报告，并记录 `node_trace`、`status` 和 `graph_runtime`。
 
 ### 3.3 工具调用层
 
@@ -139,6 +142,7 @@ flowchart LR
 - `fix_plan.json`
 - `unit_tests.json`
 - `software_engineer.json`
+- `software_engineer_graph.json`
 
 这些工件支持课程报告中的测试评估、Demo 兜底和可复现审计。
 
@@ -156,14 +160,16 @@ sequenceDiagram
     participant Sandbox as Sandbox Executor
     participant Obs as JSON Artifacts
 
-    User->>CLI: python -m src.engineer project
-    CLI->>SE: run dry-run workflow
+    User->>CLI: python -m src.engineer project --use-llm-tests
+    CLI->>SE: run LangGraph dry-run workflow
     SE->>Review: analyze repository
     Review-->>SE: ReviewReport
     SE->>Fix: generate safe fix plan
     Fix-->>SE: FixPlan
     SE->>Unit: generate missing unit tests
     Unit-->>SE: UnitTestReport
+    SE->>LLM: optional LLM test node
+    LLM-->>SE: LLMTestGenerationReport
     SE-->>Obs: software_engineer.json
 
     User->>CLI: python -m src.llm_tests project
@@ -181,7 +187,7 @@ sequenceDiagram
 | --- | --- |
 | SDD 规格驱动开发 | `docs/specs/product_spec.md`、`architecture_spec.md`、`api_spec.md` |
 | 工具使用 / Function Calling | Repo Scanner、Security Checker、Docker Executor、LLM Client、Report Writers |
-| 状态管理与多步骤推理 | Software Engineer Agent 串联 Review/Fix/Unit Test 三阶段状态 |
+| 状态管理与多步骤推理 | LangGraph StateGraph 串联 scan/review/fix/unit_tests/llm_tests/finish 节点 |
 | 多智能体协作 | Code Reviewer、Bug Fixer、Unit Test Writer、LLM Test Generator 分工协作 |
 | 可观测性与评估 | JSON artifacts、Benchmark、单元测试、Demo Guide |
 | 权限隔离 | Docker 沙箱、Security Checker、dry-run apply gate、环境变量密钥管理 |
@@ -191,7 +197,7 @@ sequenceDiagram
 ```bash
 python -m unittest discover -s tests
 python -m compileall src tests examples
-python -m src.engineer examples/review_target --output docs/runs/software_engineer.json
+python -m src.engineer examples/review_target --use-llm-tests --mock-llm-response examples/llm_response/review_target_response.md --output docs/runs/software_engineer.json
 python -m src.llm_tests examples/sample_python_project --mock-response examples/llm_response/pytest_response.md --output docs/runs/llm_tests.json
 ```
 

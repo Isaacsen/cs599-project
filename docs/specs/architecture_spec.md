@@ -328,13 +328,19 @@ Repo Scanner
 
 ### 3.20 Software Engineer Agent
 
-位置：`src/agents/software_engineer.py`
+位置：
+
+- `src/workflow/software_engineer_graph.py`
+- `src/engineer.py`
+- `src/engineer_graph.py`
+- `src/tools/software_engineer_graph_writer.py`
 
 职责：
 
-- 编排代码审查、自动修 Bug 计划和缺失覆盖单测生成。
+- 使用 LangGraph `StateGraph` 编排扫描、代码审查、自动修 Bug 计划、缺失覆盖单测生成和可选 LLM 测试生成。
 - 保持默认 dry-run，避免未经确认修改用户项目。
-- 将 `ReviewReport`、`FixPlan` 和 `UnitTestReport` 汇总为统一报告。
+- 将 `ReviewReport`、`FixPlan`、`UnitTestReport` 和可选 `LLMTestGenerationReport` 汇总为统一报告。
+- 记录 `node_trace`、`graph_runtime` 和 `status`，用于演示 Agent 状态流转。
 - 为课程演示提供一个完整的软件工程师 Agent 入口。
 
 ### 3.21 LLM Test Generator Agent
@@ -353,7 +359,7 @@ Repo Scanner
 
 位置：`src/agents/`
 
-当前已实现规则型 Test Generator Agent、LLM Test Generator Agent、Code Reviewer Agent、Bug Fixer Agent、Unit Test Writer Agent 和 Software Engineer Agent。后续计划：
+当前已实现规则型 Test Generator Agent、LLM Test Generator Agent、Code Reviewer Agent、Bug Fixer Agent、Unit Test Writer Agent 和基于 LangGraph StateGraph 的 Software Engineer Agent。后续计划：
 
 - Codebase RAG Agent：增强跨文件依赖理解和上下文检索。
 - Coverage Feedback Agent：根据覆盖率报告反向补齐测试。
@@ -426,12 +432,18 @@ RepositoryScanResult
   -> Unit Test JSON Artifact
   -> Optional Test File Apply
 
-Software Engineer Flow:
+Software Engineer LangGraph Flow:
 
 RepositoryScanResult
+  -> StateGraph scan node
+  -> StateGraph review node
   -> ReviewReport
+  -> StateGraph fix node
   -> FixPlan
+  -> StateGraph unit_tests node
   -> UnitTestReport
+  -> Optional StateGraph llm_tests node
+  -> Node Trace
   -> Software Engineer JSON Artifact
 
 LLM Test Generation Flow:

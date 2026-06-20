@@ -117,12 +117,12 @@ python -m src.unit_tests examples/review_target --output docs/runs/unit_tests.js
 ### 7. 运行软件工程师 Agent
 
 ```bash
-python -m src.engineer examples/review_target --output docs/runs/software_engineer.json
+python -m src.engineer examples/review_target --use-llm-tests --mock-llm-response examples/llm_response/review_target_response.md --output docs/runs/software_engineer.json
 ```
 
 演示要点：
 
-- 串联代码审查、自动修 Bug 计划和缺失覆盖单测生成。
+- 使用 LangGraph StateGraph 串联代码审查、自动修 Bug 计划、缺失覆盖单测生成和 LLM 测试生成。
 - 默认 dry-run，不修改样例源码。
 - 统一报告写入 `docs/runs/software_engineer.json`。
 
@@ -165,6 +165,7 @@ python -m src.llm_tests examples/sample_python_project --mock-response examples/
 - `docs/runs/fix_plan.json`
 - `docs/runs/unit_tests.json`
 - `docs/runs/software_engineer.json`
+- `docs/runs/software_engineer_graph.json`
 
 这些文件记录了完整 Demo 的可复现输出。
 
@@ -176,4 +177,4 @@ python -m src.llm_tests examples/sample_python_project --mock-response examples/
 scripts/final_verify.ps1
 ```
 
-该脚本会执行单元测试、语法编译检查、软件工程师 Agent dry-run、LLM 测试生成离线 mock，以及明文 API Key 扫描。
+该脚本会执行单元测试、语法编译检查、LangGraph 软件工程师 Agent dry-run、LLM 测试生成离线 mock、PDF 导出检查，以及明文 API Key 扫描。

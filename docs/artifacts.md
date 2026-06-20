@@ -21,10 +21,12 @@
 - `docs/runs/benchmark.json`：Benchmark 评估报告。
 - `docs/runs/llm_prompt.json`：LLM 测试生成 Prompt 工件。
 - `docs/runs/llm_tests.json`：LLM Test Generator Agent dry-run 测试生成报告。
+- `docs/runs/llm_tests_real.json`：真实 DashScope 配置下的 LLM Test Generator 运行报告。
 - `docs/runs/review.json`：Code Reviewer Agent 审查报告。
 - `docs/runs/fix_plan.json`：Bug Fixer Agent dry-run 修复计划。
 - `docs/runs/unit_tests.json`：Unit Test Writer Agent dry-run 单测生成报告。
-- `docs/runs/software_engineer.json`：Software Engineer Agent 统一 dry-run 报告。
+- `docs/runs/software_engineer.json`：Software Engineer Agent LangGraph dry-run 报告。
+- `docs/runs/software_engineer_graph.json`：显式 LangGraph 入口生成的 dry-run 报告。
 
 ## Source Code
 
@@ -33,7 +35,8 @@
 - `src/review.py`：代码审查 Agent CLI。
 - `src/fix.py`：自动修 Bug Agent CLI。
 - `src/unit_tests.py`：缺失覆盖单测生成 Agent CLI。
-- `src/engineer.py`：软件工程师 Agent 统一 CLI。
+- `src/engineer.py`：软件工程师 Agent LangGraph 默认 CLI。
+- `src/engineer_graph.py`：软件工程师 Agent LangGraph 显式 CLI。
 - `src/llm_tests.py`：LLM 测试生成 Agent CLI。
 - `src/agents/test_planner.py`：测试规划 Agent。
 - `src/agents/test_generator.py`：测试生成 Agent。
@@ -45,6 +48,8 @@
 - `src/agents/unit_test_writer.py`：缺失覆盖单测生成 Agent。
 - `src/agents/software_engineer.py`：软件工程师 Agent 编排器。
 - `src/agents/llm_test_generator.py`：LLM 测试生成 Agent。
+- `src/workflow/software_engineer_graph.py`：LangGraph StateGraph 工作流。
+- `src/tools/software_engineer_graph_writer.py`：LangGraph 软件工程师报告 JSON writer。
 - `src/sandbox/docker_executor.py`：Docker 沙箱执行器。
 - `src/evaluation/benchmark.py`：Benchmark 汇总逻辑。
 - `src/llm/prompt_builder.py`：LLM Prompt 构建器。
@@ -52,7 +57,7 @@
 
 ## Tests
 
-- `tests/`：单元测试，覆盖测试规划、测试生成、安全检查、结果分析、失败诊断、Benchmark、LLM Prompt 构建、LLM 测试生成、代码审查、自动修 Bug、缺失覆盖单测生成和软件工程师 Agent 编排。
+- `tests/`：单元测试，覆盖测试规划、测试生成、安全检查、结果分析、失败诊断、Benchmark、LLM Prompt 构建、LLM 测试生成、代码审查、自动修 Bug、缺失覆盖单测生成和 LangGraph 软件工程师 Agent 编排。
 
 ## Demo Script
 

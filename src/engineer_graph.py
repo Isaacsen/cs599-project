@@ -16,8 +16,8 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("project_path", help="Path to the Python project to inspect.")
     parser.add_argument(
         "--output",
-        default="docs/runs/software_engineer.json",
-        help="Path to write the JSON software engineer graph report.",
+        default="docs/runs/software_engineer_graph.json",
+        help="Path to write the JSON LangGraph workflow report.",
     )
     parser.add_argument(
         "--apply-fixes",
@@ -41,7 +41,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--test-file",
         default="tests/test_testguard_generated.py",
-        help="Project-relative path for generated pytest tests when --apply-tests is enabled.",
+        help="Project-relative path for generated unit tests when --apply-tests is enabled.",
     )
     parser.add_argument(
         "--llm-test-file",
@@ -63,7 +63,7 @@ def main() -> int:
 
     try:
         mock_response = _read_optional_file(args.mock_llm_response)
-        report = run_software_engineer_graph(
+        result = run_software_engineer_graph(
             args.project_path,
             apply_fixes=args.apply_fixes,
             apply_tests=args.apply_tests,
@@ -73,13 +73,13 @@ def main() -> int:
             max_functions=args.max_functions,
             mock_llm_response=mock_response,
         )
-        output_path = write_software_engineer_graph_result(report, args.output)
+        output_path = write_software_engineer_graph_result(result, args.output)
     except Exception as exc:
         print(f"Error: {exc}", file=sys.stderr)
         return 2
 
-    print(format_software_engineer_graph_result(report))
-    print(f"\nSoftware Engineer Report: {output_path}")
+    print(format_software_engineer_graph_result(result))
+    print(f"\nSoftware Engineer Graph Report: {output_path}")
     return 0
 
 
