@@ -63,6 +63,8 @@ cp .env.example .env
 ```
 
 不要在代码中硬编码 API Key。
+阿里云 DashScope 是默认 LLM provider，代码会优先通过 `os.getenv("DASHSCOPE_API_KEY")` 读取 DashScope Key，并将 `LLM_API_KEY` 作为兼容回退。
+如果使用 DeepSeek，可以设置 `LLM_PROVIDER=deepseek`，代码会优先通过 `os.getenv("DEEPSEEK_API_KEY")` 读取 DeepSeek Key。
 
 4. 运行最小闭环 Demo：
 
