@@ -5,6 +5,7 @@ from dataclasses import asdict
 from pathlib import Path
 from typing import Any
 
+from src.agents.llm_code_fixer import LLMCodeFixReport
 from src.tools.llm_test_writer import llm_test_report_to_dict
 from src.workflow.software_engineer_graph import SoftwareEngineerGraphResult
 
@@ -17,7 +18,9 @@ def software_engineer_graph_result_to_dict(result: SoftwareEngineerGraphResult) 
         "graph_runtime": result.graph_runtime,
         "node_trace": result.node_trace,
         "summary": {
+            "llm_fix_count": _fix_count(state),
             "generated_llm_test_count": result.generated_llm_test_count,
+            "apply_fixes": state.get("apply_fixes", False),
             "apply_tests": state.get("apply_tests", False),
             "run_sandbox": state.get("run_sandbox", False),
             "sandbox_executor": state.get("sandbox_executor", "docker"),
@@ -27,8 +30,14 @@ def software_engineer_graph_result_to_dict(result: SoftwareEngineerGraphResult) 
         payload["scan"] = asdict(state["scan"])
     if "llm_review" in state:
         payload["llm_review"] = _llm_review_to_dict(state["llm_review"])
+    if "llm_fix" in state:
+        payload["llm_fix"] = _llm_fix_to_dict(state["llm_fix"])
+    if "llm_fix_history" in state:
+        payload["llm_fix_history"] = [_llm_fix_to_dict(report) for report in state["llm_fix_history"]]
     if "llm_tests" in state:
         payload["llm_tests"] = llm_test_report_to_dict(state["llm_tests"])
+    if "llm_tests_history" in state:
+        payload["llm_tests_history"] = [llm_test_report_to_dict(report) for report in state["llm_tests_history"]]
     if "sandbox_validation" in state:
         payload["sandbox_validation"] = asdict(state["sandbox_validation"])
     if "sandbox_validation_history" in state:
@@ -72,6 +81,7 @@ def format_software_engineer_markdown(result: SoftwareEngineerGraphResult) -> st
         f"| Status | `{state.get('status', 'unknown')}` |",
         f"| Runtime | `{result.graph_runtime}` |",
         f"| LLM Review Findings | {_count(state.get('llm_review'), 'finding_count')} |",
+        f"| LLM Fixes | {_fix_count(state)} |",
         f"| Generated LLM Tests | {result.generated_llm_test_count} |",
         f"| Sandbox Validation | `{_status(state.get('sandbox_validation'))}` |",
         f"| Coverage | {_coverage_value(state.get('coverage_feedback'))} |",
@@ -81,11 +91,15 @@ def format_software_engineer_markdown(result: SoftwareEngineerGraphResult) -> st
         "| Step | Agent | Result |",
         "| --- | --- | --- |",
     ]
+    occurrences: dict[str, int] = {}
     for index, node in enumerate(result.node_trace, start=1):
-        lines.append(f"| {index} | `{node}` | {_node_result(state, node)} |")
+        occurrences[node] = occurrences.get(node, 0) + 1
+        lines.append(f"| {index} | `{node}` | {_node_result(state, node, occurrences[node])} |")
 
     lines.extend(["", "## LLM Review Findings", ""])
     lines.extend(_finding_table(state.get("llm_review")))
+    lines.extend(["", "## LLM Code Fixes", ""])
+    lines.extend(_fix_section(state.get("llm_fix")))
     lines.extend(["", "## Sandbox Validation", ""])
     lines.extend(_sandbox_section(state.get("sandbox_validation")))
     lines.extend(["", "## Coverage Feedback", ""])
@@ -113,6 +127,30 @@ def _llm_review_to_dict(report: Any) -> dict[str, Any]:
     }
 
 
+def _llm_fix_to_dict(report: LLMCodeFixReport) -> dict[str, Any]:
+    return {
+        "project_path": report.project_path,
+        "status": report.status,
+        "applied": report.applied,
+        "provider": report.provider,
+        "model": report.model,
+        "api_key_set": report.api_key_set,
+        "api_key_env": report.api_key_env,
+        "summary": {
+            "fix_count": report.fix_count,
+        },
+        "fixes": [
+            {
+                "file_path": fix.file_path,
+                "summary": fix.summary,
+                "applied": fix.applied,
+                "replacement_content": fix.replacement_content,
+            }
+            for fix in report.fixes
+        ],
+    }
+
+
 def _status(report: Any) -> str:
     if report is None:
         return "not_run"
@@ -125,19 +163,48 @@ def _count(report: Any, attribute: str) -> int:
     return int(getattr(report, attribute, 0))
 
 
+def _fix_count(state: dict[str, Any]) -> int:
+    history = state.get("llm_fix_history") or []
+    if history:
+        return sum(int(getattr(report, "fix_count", 0)) for report in history)
+    return _count(state.get("llm_fix"), "fix_count")
+
+
 def _coverage_value(report: Any) -> str:
     if report is None:
         return "not_run"
     return f"{report.coverage_ratio:.0%}"
 
 
-def _node_result(state: dict[str, Any], node: str) -> str:
+def _node_result(state: dict[str, Any], node: str, occurrence: int = 1) -> str:
     mapping = {
         "scan": ("scan", lambda: f"{len(state['scan'].source_files)} source file(s)"),
         "llm_review": ("llm_review", lambda: f"{state['llm_review'].finding_count} finding(s)"),
-        "llm_tests": ("llm_tests", lambda: f"{state['llm_tests'].generated_test_count} test(s)"),
-        "sandbox_validate": ("sandbox_validation", lambda: state["sandbox_validation"].status),
-        "repair_loop": ("repair_loop", lambda: state["repair_loop"].status),
+        "llm_fix": ("llm_fix", lambda: _history_result(state, "llm_fix_history", "llm_fix", occurrence, _fix_result)),
+        "llm_tests": (
+            "llm_tests",
+            lambda: _history_result(state, "llm_tests_history", "llm_tests", occurrence, _llm_test_result),
+        ),
+        "sandbox_validate": (
+            "sandbox_validation",
+            lambda: _history_result(
+                state,
+                "sandbox_validation_history",
+                "sandbox_validation",
+                occurrence,
+                lambda report: report.status,
+            ),
+        ),
+        "repair_loop": (
+            "repair_loop",
+            lambda: _history_result(
+                state,
+                "repair_history",
+                "repair_loop",
+                occurrence,
+                lambda report: report.status,
+            ),
+        ),
         "coverage_feedback": ("coverage_feedback", lambda: f"{state['coverage_feedback'].coverage_ratio:.0%}"),
         "finish": ("status", lambda: state.get("status", "unknown")),
     }
@@ -147,6 +214,28 @@ def _node_result(state: dict[str, Any], node: str) -> str:
     if required_key not in state:
         return ""
     return str(renderer())
+
+
+def _history_result(
+    state: dict[str, Any],
+    history_key: str,
+    fallback_key: str,
+    occurrence: int,
+    renderer: Any,
+) -> str:
+    history = state.get(history_key) or []
+    index = occurrence - 1
+    if 0 <= index < len(history):
+        return str(renderer(history[index]))
+    return str(renderer(state[fallback_key]))
+
+
+def _fix_result(report: Any) -> str:
+    return f"{report.fix_count} fix(es), {report.status}"
+
+
+def _llm_test_result(report: Any) -> str:
+    return f"{report.generated_test_count} test(s), {report.status}"
 
 
 def _finding_table(report: Any) -> list[str]:
@@ -185,6 +274,17 @@ def _sandbox_section(report: Any) -> list[str]:
     if report.diagnosis.suggestions:
         lines.extend(["", "Suggestions:"])
         lines.extend(f"- {item}" for item in report.diagnosis.suggestions)
+    return lines
+
+
+def _fix_section(report: Any) -> list[str]:
+    if report is None:
+        return ["LLM code fixer was not run."]
+    if not report.fixes:
+        return [f"Status: `{report.status}`. No fixes were proposed."]
+    lines = ["| File | Applied | Summary |", "| --- | --- | --- |"]
+    for fix in report.fixes[:8]:
+        lines.append(f"| `{_cell(fix.file_path)}` | `{fix.applied}` | {_cell(fix.summary)} |")
     return lines
 
 

@@ -4,12 +4,16 @@ import unittest
 from pathlib import Path
 
 from src.agents.coverage_feedback import build_coverage_feedback
+from src.agents.failure_diagnoser import FailureDiagnosis
 from src.agents.llm_code_reviewer import review_repository_with_llm
 from src.agents.repair_loop import plan_repair_iteration
+from src.agents.result_analyzer import PytestSummary
+from src.agents.sandbox_validator import SandboxValidationReport
 from src.agents.sandbox_validator import validate_generated_tests_in_sandbox
 from src.agents.test_generator import GeneratedTestSuite
 from src.agents.unit_test_writer import UnitTestReport, generate_missing_unit_tests
 from src.llm.config import LLMConfig
+from src.sandbox.local_executor import TestExecutionResult
 from src.tools.repo_scanner import scan_repository
 
 
@@ -94,6 +98,36 @@ class PriorityAgentsTest(unittest.TestCase):
 
         self.assertEqual("planned", report.status)
         self.assertEqual("sandbox_validate", report.next_step)
+
+    def test_repair_loop_routes_import_errors_to_test_generation(self) -> None:
+        failed_report = SandboxValidationReport(
+            project_path=str(self.project_path),
+            status="failed",
+            executor="local",
+            generated_test_files=["tests/test_generated.py"],
+            execution=TestExecutionResult(
+                passed=False,
+                exit_code=1,
+                stdout="ERROR tests/test_generated.py - ModuleNotFoundError",
+                stderr="",
+                duration_seconds=0.1,
+                timed_out=False,
+                executor="local",
+            ),
+            analysis=PytestSummary(passed=0, failed=0, errors=1, total=1, conclusion="failed"),
+            diagnosis=FailureDiagnosis(
+                status="needs_attention",
+                failure_types=["import_error", "pytest_error"],
+                key_findings=["tests/test_generated.py"],
+                suggestions=["Check generated test imports."],
+            ),
+            security_checks=[],
+        )
+
+        report = plan_repair_iteration(failed_report, current_iteration=0, max_iterations=1)
+
+        self.assertEqual("planned", report.status)
+        self.assertEqual("llm_tests", report.next_step)
 
 
 if __name__ == "__main__":

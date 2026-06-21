@@ -6,7 +6,7 @@ Software Engineer Agent 采用分层架构：
 
 - CLI 层：`src.engineer`、`src.llm_tests`、`src.main`、`src.benchmark`。
 - Workflow 层：`src/workflow/software_engineer_graph.py` 中的 LangGraph `StateGraph`。
-- Agent 层：LLM 审查、LLM 测试生成、沙箱验证、失败后回跳重试的修复循环和覆盖反馈。
+- Agent 层：LLM 审查、LLM 修复建议、LLM 测试生成、沙箱验证、失败后回跳重试的修复循环和覆盖反馈。
 - Tool 层：仓库扫描、临时工作区、报告写出、Prompt 构建和 LLM Client。
 - Sandbox 层：local executor 与 Docker executor。
 
@@ -16,10 +16,11 @@ Software Engineer Agent 采用分层架构：
 START
   -> scan
   -> llm_review
+  -> llm_fix
   -> llm_tests / sandbox_validate / coverage_feedback
   -> sandbox_validate / coverage_feedback
   -> repair_loop
-  -> llm_tests / coverage_feedback
+  -> llm_fix / llm_tests / coverage_feedback
   -> coverage_feedback
   -> finish
   -> END
@@ -35,6 +36,7 @@ START
 - `sandbox_executor`
 - `scan`
 - `llm_review`
+- `llm_fix`
 - `llm_tests`
 - `sandbox_validation`
 - `repair_loop`
@@ -45,9 +47,10 @@ START
 ## 4. Agent 职责
 
 - `llm_code_reviewer`: 调用真实 LLM 产生 `LLMCodeReviewReport`。
+- `llm_code_fixer`: 调用真实 LLM 产生 `LLMCodeFixReport`，并在 `--apply-fixes` 下写回源码。
 - `llm_test_generator`: 调用真实 LLM 产生 `LLMTestGenerationReport`。
 - `sandbox_validator`: 在隔离后端运行 pytest，产生 `SandboxValidationReport`。
-- `repair_loop`: 根据沙箱失败诊断决定是否回跳 `llm_tests` 重试，或进入覆盖反馈。
+- `repair_loop`: 根据沙箱失败诊断决定把失败结果回送 `llm_fix` 或 `llm_tests` 重试，或进入覆盖反馈。
 - `coverage_feedback`: 汇总覆盖与缺失函数。
 
 ## 5. 权限隔离

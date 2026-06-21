@@ -2,9 +2,9 @@
 
 ## 项目简介
 
-Software Engineer Agent 是一个面向 Python 项目的软件工程师 Agent 与权限隔离执行平台。项目使用 LangGraph 编排多个真实 Agent，完成仓库扫描、LLM 代码审查、LLM 测试生成、沙箱验证、失败后回跳重试的修复循环和覆盖反馈，并输出可审计的 JSON / Markdown 报告。
+Software Engineer Agent 是一个面向 Python 项目的软件工程师 Agent 与权限隔离执行平台。项目使用 LangGraph 编排多个真实 Agent，完成仓库扫描、LLM 代码审查、LLM 修复建议、LLM 测试生成、沙箱验证、失败后回跳重试的修复循环和覆盖反馈，并输出可审计的 JSON / Markdown 报告。
 
-当前版本已移除基于人工规则的 Bug Fix Agent、Patch Review Agent、规则 Review 节点和模板 Unit Test 节点。主流程默认直接使用 LLM Review Agent 与 LLM Test Agent。
+当前版本已移除基于人工规则的 Bug Fix Agent、Patch Review Agent、规则 Review 节点和模板 Unit Test 节点。主流程默认直接使用 LLM Review Agent、LLM Fix Agent 与 LLM Test Agent。
 
 ## 技术栈
 
@@ -78,11 +78,14 @@ python -m src.engineer examples/review_target --run-sandbox --sandbox-executor d
 START
   -> scan
   -> llm_review
+  -> llm_fix
   -> llm_tests
   -> sandbox_validate / coverage_feedback
   -> sandbox_validate
   -> repair_loop
-      -> llm_tests        # sandbox 失败且未达到重试上限
+      -> llm_fix          # 像代码缺陷的失败
+      -> llm_tests        # 像生成测试自身的问题
+      -> llm_tests
       -> coverage_feedback
   -> coverage_feedback
   -> finish

@@ -14,6 +14,7 @@ python -m src.engineer <project_path> [options]
 | `--output` | 否 | JSON 报告路径，默认 `docs/runs/software_engineer.json`。 |
 | `--output-md` | 否 | Markdown 报告路径，默认 `docs/runs/software_engineer.md`。 |
 | `--apply-tests` | 否 | 将生成测试写回目标项目。默认 dry-run。 |
+| `--apply-fixes` | 否 | 将 LLM 修复建议写回源码。默认 dry-run。 |
 | `--run-sandbox` | 否 | 启用 sandbox validation。 |
 | `--sandbox-executor` | 否 | `local` 或 `docker`，默认 `docker`。 |
 | `--docker-image` | 否 | Docker 沙箱镜像。 |
@@ -46,6 +47,7 @@ python -m src.benchmark --executor docker --output docs/runs/benchmark.json
 - `summary`
 - `scan`
 - `llm_review`
+- `llm_fix`
 - `llm_tests`
 - `sandbox_validation`
 - `repair_loop`
@@ -54,6 +56,8 @@ python -m src.benchmark --executor docker --output docs/runs/benchmark.json
 `summary` 字段：
 
 - `generated_llm_test_count`
+- `llm_fix_count`
+- `apply_fixes`
 - `apply_tests`
 - `run_sandbox`
 - `sandbox_executor`

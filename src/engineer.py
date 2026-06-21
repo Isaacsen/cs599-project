@@ -32,6 +32,11 @@ def build_parser() -> argparse.ArgumentParser:
         help="Write generated pytest tests to the target project. Omit for dry-run planning.",
     )
     parser.add_argument(
+        "--apply-fixes",
+        action="store_true",
+        help="Apply LLM code fixes to source files. Omit to keep fixes as dry-run suggestions.",
+    )
+    parser.add_argument(
         "--run-sandbox",
         action="store_true",
         help="Run generated tests through the sandbox validation node.",
@@ -80,6 +85,7 @@ def main() -> int:
     try:
         report = run_software_engineer_graph(
             args.project_path,
+            apply_fixes=args.apply_fixes,
             apply_tests=args.apply_tests,
             run_sandbox=args.run_sandbox,
             sandbox_executor=args.sandbox_executor,

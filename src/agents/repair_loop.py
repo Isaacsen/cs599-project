@@ -45,17 +45,52 @@ def plan_repair_iteration(
             next_step="manual_review",
             actions=actions,
         )
+    next_step = _next_step_for_failure(sandbox_validation)
+    if next_step == "manual_review":
+        return RepairLoopReport(
+            status="blocked",
+            iteration=current_iteration,
+            next_step="manual_review",
+            actions=_dedupe(
+                [
+                    *actions,
+                    "The failure looks environment-specific or ambiguous; inspect it before another LLM retry.",
+                ]
+            ),
+        )
     return RepairLoopReport(
         status="planned",
         iteration=current_iteration + 1,
-        next_step="llm_tests",
-        actions=_dedupe(
-            [
-                *actions,
-                "Regenerate LLM tests with the sandbox failure context, then validate again.",
-            ]
-        ),
+        next_step=next_step,
+        actions=_dedupe([*actions, _next_step_action(next_step)]),
     )
+
+
+def _next_step_for_failure(sandbox_validation: SandboxValidationReport | None) -> str:
+    if sandbox_validation is None:
+        return "sandbox_validate"
+    if any(check is not None and not check.passed for check in sandbox_validation.security_checks):
+        return "llm_tests"
+
+    failure_types = set(sandbox_validation.diagnosis.failure_types)
+    test_generation_failures = {"import_error", "pytest_error"}
+    code_fix_failures = {"assertion_failure", "zero_division", "timeout", "pytest_failure"}
+
+    if failure_types & test_generation_failures:
+        return "llm_tests"
+    if failure_types & code_fix_failures:
+        return "llm_fix"
+    return "manual_review"
+
+
+def _next_step_action(next_step: str) -> str:
+    if next_step == "llm_tests":
+        return "Regenerate LLM tests with the sandbox failure context, then validate again."
+    if next_step == "llm_fix":
+        return "Send sandbox failure context to the LLM fix agent, then regenerate tests and validate again."
+    if next_step == "sandbox_validate":
+        return "Run sandbox validation before planning another repair step."
+    return "Inspect the failure manually before another LLM retry."
 
 
 def _dedupe(values: list[str]) -> list[str]:

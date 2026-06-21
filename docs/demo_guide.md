@@ -8,6 +8,7 @@
 Python 项目
   -> Repo Scanner
   -> LLM Code Reviewer Agent
+  -> LLM Code Fixer Agent
   -> LLM Test Generator Agent
   -> Docker Sandbox Validator Agent
   -> Repair Loop Agent
@@ -15,7 +16,7 @@ Python 项目
   -> JSON / Markdown Report
 ```
 
-项目已移除基于人工规则的 Bug Fix Agent、Patch Review Agent、规则 Review 节点和模板 Unit Test 节点，因此 Demo 直接展示 LLM Agent 审查、LLM Agent 测试生成和沙箱验证。
+项目已移除基于人工规则的 Bug Fix Agent、Patch Review Agent、规则 Review 节点和模板 Unit Test 节点，因此 Demo 直接展示 LLM Agent 审查、LLM Agent 修复建议、LLM Agent 测试生成和沙箱验证。
 
 ## 准备步骤
 
@@ -35,7 +36,7 @@ python -m src.engineer examples/review_target --run-sandbox --sandbox-executor d
 
 演示要点：
 
-- LangGraph StateGraph 串联 LLM 审查、LLM 测试生成、Docker 沙箱验证、修复循环和覆盖反馈。
+- LangGraph StateGraph 串联 LLM 审查、LLM 修复建议、LLM 测试生成、Docker 沙箱验证、修复循环和覆盖反馈。
 - 默认 dry-run，不修改样例源码。
 - JSON 报告写入 `docs/runs/software_engineer.json`。
 - Markdown 报告写入 `docs/runs/software_engineer.md`。

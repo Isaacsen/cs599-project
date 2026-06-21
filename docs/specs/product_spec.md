@@ -2,7 +2,7 @@
 
 ## 1. 目标
 
-Software Engineer Agent 面向 Python 项目，提供真实 LLM 语义审查、LLM 测试生成、权限隔离执行、失败后回跳重试的修复循环和覆盖反馈。
+Software Engineer Agent 面向 Python 项目，提供真实 LLM 语义审查、LLM 修复建议、LLM 测试生成、权限隔离执行、失败后回跳重试的修复循环和覆盖反馈。
 
 当前版本不提供自动改写业务源码的 Bug Fix Agent，也不在主流程中使用规则 Review 或模板 Unit Test。系统输出 LLM 审查发现、LLM 测试结果和下一步建议，由用户或外部开发工具决定如何修改代码。
 
@@ -22,7 +22,7 @@ Software Engineer Agent 面向 Python 项目，提供真实 LLM 语义审查、L
 | FR-3 | 调用真实 LLM 生成 pytest 测试。 |
 | FR-6 | 对生成测试执行安全检查。 |
 | FR-7 | 在 local 或 Docker 后端运行生成测试。 |
-| FR-8 | 根据沙箱结果决定是否回跳 LLM Test Agent 重试。 |
+| FR-8 | 根据沙箱结果决定把失败诊断回送给 LLM Fix Agent 或 LLM Test Agent 重试。 |
 | FR-9 | 输出覆盖反馈。 |
 | FR-10 | 输出 JSON 和 Markdown 报告。 |
 | FR-11 | LLM API Key 只能通过环境变量读取。 |
@@ -37,5 +37,5 @@ Software Engineer Agent 面向 Python 项目，提供真实 LLM 语义审查、L
 ## 5. 主流程
 
 ```text
-scan -> llm_review -> llm_tests -> sandbox_validate? -> repair_loop? -> llm_tests* -> coverage_feedback -> finish
+scan -> llm_review -> llm_fix -> llm_tests -> sandbox_validate? -> repair_loop? -> (llm_fix|llm_tests)* -> coverage_feedback -> finish
 ```
