@@ -27,24 +27,9 @@ def build_parser() -> argparse.ArgumentParser:
         help="Path to write the human-readable Markdown software engineer report.",
     )
     parser.add_argument(
-        "--apply-fixes",
-        action="store_true",
-        help="Apply safe bug fixes to the target project. Omit for dry-run planning.",
-    )
-    parser.add_argument(
         "--apply-tests",
         action="store_true",
         help="Write generated pytest tests to the target project. Omit for dry-run planning.",
-    )
-    parser.add_argument(
-        "--use-llm-tests",
-        action="store_true",
-        help="Run the LLM Test Generator node after unit-test generation.",
-    )
-    parser.add_argument(
-        "--use-llm-review",
-        action="store_true",
-        help="Run the LLM Code Review node after rule-based review.",
     )
     parser.add_argument(
         "--run-sandbox",
@@ -71,13 +56,8 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--repair-iterations",
         type=int,
-        default=1,
-        help="Maximum repair-loop iterations to plan.",
-    )
-    parser.add_argument(
-        "--test-file",
-        default="tests/test_software_engineer_generated.py",
-        help="Project-relative path for generated pytest tests when --apply-tests is enabled.",
+        default=3,
+        help="Maximum repair-loop retries after sandbox failures.",
     )
     parser.add_argument(
         "--llm-test-file",
@@ -100,16 +80,12 @@ def main() -> int:
     try:
         report = run_software_engineer_graph(
             args.project_path,
-            apply_fixes=args.apply_fixes,
             apply_tests=args.apply_tests,
-            use_llm_review=args.use_llm_review,
-            use_llm_tests=args.use_llm_tests,
             run_sandbox=args.run_sandbox,
             sandbox_executor=args.sandbox_executor,
             docker_image=args.docker_image,
             timeout_seconds=args.timeout,
             repair_iterations=args.repair_iterations,
-            test_file_path=args.test_file,
             llm_test_file_path=args.llm_test_file,
             max_functions=args.max_functions,
         )

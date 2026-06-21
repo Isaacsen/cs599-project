@@ -24,7 +24,7 @@ if ($LASTEXITCODE -ne 0) {
 }
 
 Write-Host "`n[Software Engineer Agent Final Verify] Generate software engineer report"
-& $Python -m src.engineer examples/review_target --use-llm-review --use-llm-tests --run-sandbox --sandbox-executor docker --docker-image $DockerImage --output docs/runs/software_engineer.json --output-md docs/runs/software_engineer.md
+& $Python -m src.engineer examples/review_target --run-sandbox --sandbox-executor docker --docker-image $DockerImage --output docs/runs/software_engineer.json --output-md docs/runs/software_engineer.md
 if ($LASTEXITCODE -ne 0) {
     throw "Software engineer agent failed."
 }

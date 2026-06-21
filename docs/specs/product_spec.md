@@ -1,139 +1,41 @@
-﻿# Product Spec: Software Engineer Agent
+# Product Spec
 
-## 1. 项目背景
+## 1. 目标
 
-企业级软件项目不仅需要持续测试，还需要持续代码审查、缺陷修复和回归保障。传统流程依赖人工反复阅读代码、定位风险、编写单测和运行验证，效率低且容易遗漏边界场景。LLM 与 Agent 可以辅助软件工程师完成这些任务，但模型生成的代码和修复建议如果直接在宿主机执行，可能带来文件破坏、网络访问、资源耗尽和敏感信息泄露风险。
+Software Engineer Agent 面向 Python 项目，提供真实 LLM 语义审查、LLM 测试生成、权限隔离执行、失败后回跳重试的修复循环和覆盖反馈。
 
-Software Engineer Agent 目标是构建一个面向 Python 项目的软件工程师 Agent 与权限隔离执行平台：它能够理解项目结构，执行代码审查，生成自动修 Bug 计划，补齐缺失覆盖单元测试，调用 LLM 生成 pytest，并在权限隔离环境中执行验证，最后输出结构化报告和评估证据。
+当前版本不提供自动改写业务源码的 Bug Fix Agent，也不在主流程中使用规则 Review 或模板 Unit Test。系统输出 LLM 审查发现、LLM 测试结果和下一步建议，由用户或外部开发工具决定如何修改代码。
 
-## 2. 用户角色
+## 2. 用户场景
 
-- 开发者：希望快速获得代码审查、修复建议、单测补齐、测试结果和失败诊断。
-- 课程评审者：希望看到 Agentic AI、SDD、工具调用、状态管理和权限隔离的完整工程闭环。
+- 课程评审者需要看到一个可运行、可观测、可复现的 Agentic AI 项目。
+- 开发者需要快速审查 Python 项目并补齐基础测试。
+- 开发者需要把 LLM 生成代码放到隔离环境里验证。
+- 开发者需要知道当前测试覆盖了哪些函数，还有哪些函数缺失覆盖。
 
-## 3. 核心目标
+## 3. 功能需求
 
-1. 扫描 Python 项目并识别源码文件、测试文件和测试框架。
-2. 生成面向核心函数和边界场景的 pytest 测试计划。
-3. 通过 LLM Agent 生成测试代码。
-4. 在沙箱环境中执行测试，限制文件写入、网络访问、CPU、内存和执行时间。
-5. 分析测试结果，输出失败原因、覆盖率信息和修复建议。
-6. 执行代码审查，发现危险调用、疑似硬编码密钥、异常处理和测试覆盖风险。
-7. 生成自动修 Bug 计划，并在用户显式确认时应用安全修复。
-8. 为缺失覆盖的公开函数生成单元测试，并在用户显式确认时写入目标项目。
-9. 通过基于 LangGraph StateGraph 的统一软件工程师 Agent 编排规则审查、LLM 审查、修复计划、Patch 审查、单测生成、LLM 测试生成、沙箱验证、修复循环和覆盖反馈。
-10. 接入 OpenAI-compatible LLM 测试生成，支持 DashScope、DeepSeek 等 provider。
+| 编号 | 需求 |
+| --- | --- |
+| FR-1 | 扫描 Python 仓库并识别公开函数。 |
+| FR-2 | 调用真实 LLM 执行语义代码审查。 |
+| FR-3 | 调用真实 LLM 生成 pytest 测试。 |
+| FR-6 | 对生成测试执行安全检查。 |
+| FR-7 | 在 local 或 Docker 后端运行生成测试。 |
+| FR-8 | 根据沙箱结果决定是否回跳 LLM Test Agent 重试。 |
+| FR-9 | 输出覆盖反馈。 |
+| FR-10 | 输出 JSON 和 Markdown 报告。 |
+| FR-11 | LLM API Key 只能通过环境变量读取。 |
 
-## 4. 当前交付范围
+## 4. 非功能需求
 
-当前项目的主交付是基于 LangGraph `StateGraph` 的 Software Engineer Agent。推荐演示流程如下：
+- 默认不写回目标项目；写回测试必须显式传入 `--apply-tests`。
+- Docker 沙箱应限制网络、文件系统写入和资源。
+- 报告不得包含 API Key 明文。
+- 主流程必须可在无 LLM 或无 Docker 的情况下以降级路径运行。
+
+## 5. 主流程
 
 ```text
-Python Project
-  -> Repo Scanner
-  -> Rule Code Reviewer Agent
-  -> LLM Code Reviewer Agent
-  -> Bug Fixer Agent
-  -> Patch Reviewer Agent
-  -> Unit Test Writer Agent
-  -> LLM Test Generator Agent
-  -> Sandbox Validator Agent
-  -> Repair Loop Agent
-  -> Coverage Feedback Agent
-  -> JSON / Markdown Report
+scan -> llm_review -> llm_tests -> sandbox_validate? -> repair_loop? -> llm_tests* -> coverage_feedback -> finish
 ```
-
-系统仍保留早期形成的辅助能力：本地 / Docker pytest 执行、规则型测试规划与生成、结果分析、失败诊断、Benchmark、LLM Prompt 导出，以及独立的 `review`、`fix`、`unit_tests`、`llm_tests` CLI。这些辅助入口服务于课程演示、离线兜底和可复现评估；当前架构的中心是 `src.engineer` 的多 Agent 工作流。
-
-## 5. 功能需求
-
-### FR-1 项目扫描
-
-系统应接收本地项目路径，递归扫描 `.py` 文件，并区分源码文件与测试文件。
-
-### FR-2 测试执行
-
-系统应调用 pytest 执行目标项目测试，并捕获 stdout、stderr、退出码和耗时。
-
-### FR-3 超时控制
-
-系统应为测试执行设置超时时间，避免死循环或长期阻塞。
-
-### FR-4 报告输出
-
-系统应输出可读的命令行报告，包含语言、测试框架、源码文件数量、测试文件数量、测试结果和耗时。
-
-### FR-5 Agent 模块边界
-
-系统应保持清晰的 Agent 模块边界，支持 Repo Scanner、Code Reviewer、LLM Code Reviewer、Bug Fixer、Patch Reviewer、Unit Test Writer、LLM Test Generator、Sandbox Validator、Repair Loop、Coverage Feedback、Result Analyzer 和 Failure Diagnoser 等角色独立测试与组合编排。
-
-### FR-6 Docker 权限隔离执行
-
-系统应提供 Docker 执行后端，支持网络禁用、只读挂载、资源限制和超时控制。
-
-### FR-7 自动测试生成
-
-系统应在用户启用 `--generate-tests` 时扫描源码中的公开函数，生成结构化测试计划和 pytest 测试文件，并在临时项目副本中执行测试，避免修改原始源码。
-
-### FR-8 测试规划
-
-系统应为公开函数生成测试计划，包含目标函数、测试场景和设计理由，为规则测试生成、LLM 测试生成和评估提供可解释中间产物。
-
-### FR-9 生成代码安全校验
-
-系统应对生成的测试代码进行 AST 校验，禁止导入 `subprocess`、`socket`、`requests` 等高风险模块。
-
-### FR-10 结果分析与可观测性
-
-系统应解析 pytest 输出，提取 passed、failed、errors、skipped、warnings、total 和 conclusion，并支持将一次运行保存为 JSON 报告。
-
-### FR-11 Benchmark 评估
-
-系统应提供可重复运行的 Benchmark 入口，统计测试通过率、pytest 用例数量、规划测试数量、生成测试数量和总耗时，并输出 JSON 评估报告。
-
-### FR-12 失败诊断与修复建议
-
-系统应在测试失败、执行错误或超时时，提取 pytest 输出中的失败线索，分类失败类型，并给出面向开发者的修复建议。
-
-### FR-13 生成测试安全检查
-
-系统应将生成测试代码的 AST 安全检查显式建模为 Agent 输出，报告是否通过、违规规则、违规内容和所在行号。
-
-### FR-14 LLM Prompt 导出
-
-系统应能基于测试计划和源码上下文导出 LLM 测试生成 Prompt，支持接入 DashScope、DeepSeek、OpenAI 或本地模型，同时不得写出 API Key 明文。
-
-### FR-15 代码审查
-
-系统应提供独立的代码审查 Agent，基于 Python AST 识别危险调用、疑似硬编码密钥、宽泛异常处理、缺失测试覆盖和除零边界风险，并输出结构化审查报告。
-
-### FR-16 自动修 Bug
-
-系统应提供自动修 Bug Agent，默认以 dry-run 方式生成结构化修复计划，并在用户显式传入 `--apply` 时应用安全规则修复，例如替换危险 `eval`、改用环境变量读取疑似密钥、收窄宽泛异常处理和加入除零保护。
-
-### FR-17 缺失覆盖单测生成
-
-系统应提供 Unit Test Writer Agent，识别现有测试未覆盖的公开函数，生成 pytest 单元测试内容并通过安全检查；默认只输出 dry-run JSON 报告，用户显式传入 `--apply` 后才写入目标项目。
-
-### FR-18 软件工程师 Agent 编排
-
-系统应提供基于 LangGraph StateGraph 的统一软件工程师 Agent 入口，串联规则代码审查、真实 LLM 代码审查、自动修 Bug 计划、Patch 审查、缺失覆盖单测生成、真实 LLM 测试生成、沙箱验证、修复循环规划和覆盖反馈，输出统一 JSON 报告；默认 dry-run，不修改目标项目，用户可通过独立开关启用修复、测试写回、LLM 节点或沙箱验证。
-
-### FR-19 LLM 测试生成
-
-系统应提供 LLM Test Generator Agent，基于 TestPlan 和源码上下文调用 OpenAI-compatible Chat Completions 接口生成 pytest 代码，支持 DashScope、DeepSeek 等 provider；生成代码必须经过 Security Checker，报告不得包含 API Key 明文，并默认使用真实 provider 配置。
-
-## 6. 非功能需求
-
-- 安全性：不得硬编码 API Key，敏感配置必须通过环境变量读取。
-- 可扩展性：测试执行器应可从本地执行替换为 Docker 沙箱执行。
-- 可观测性：每次测试运行应保留结构化结果，并可导出 JSON trace。
-- 可维护性：模块边界清晰，代码遵循简单、可测试、低耦合原则。
-
-## 7. 课程要求映射
-
-- SDD 规格驱动开发：Product Spec、Architecture Spec、API Spec。
-- 工具使用 / Function Calling：项目扫描、测试执行、代码审查和报告生成均设计为可被 Agent 调用的工具。
-- 状态管理与多步骤推理：使用 LangGraph StateGraph 编排扫描、审查、LLM 审查、修复计划、Patch 审查、单测生成、LLM 测试生成、沙箱验证、修复循环和覆盖反馈流程。
-- 可观测性与评估：记录测试结果、耗时、退出码、通过率和失败原因。
-- 权限隔离：通过 Docker 实现网络禁用、只读挂载、资源限制和超时控制。

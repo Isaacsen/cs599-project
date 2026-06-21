@@ -6,17 +6,14 @@ from src.tools.review_writer import review_report_to_dict
 
 
 class CodeReviewerAgentTest(unittest.TestCase):
-    def test_reviews_risky_example_project(self) -> None:
+    def test_reviews_example_project_for_missing_coverage(self) -> None:
         scan = scan_repository("examples/review_target")
         report = review_repository("examples/review_target", scan)
         rules = {finding.rule for finding in report.findings}
 
-        self.assertIn("dangerous_call", rules)
-        self.assertIn("division_risk", rules)
         self.assertIn("missing_test", rules)
-        self.assertIn("broad_exception", rules)
-        self.assertIn("hardcoded_secret", rules)
-        self.assertGreaterEqual(report.high_count, 2)
+        self.assertEqual(3, report.finding_count)
+        self.assertEqual(0, report.high_count)
 
     def test_review_report_dict_contains_summary(self) -> None:
         scan = scan_repository("examples/review_target")

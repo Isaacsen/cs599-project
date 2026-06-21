@@ -4,7 +4,7 @@
 
 - `README.md`: project entry point and run instructions.
 - `docs/CS599_大作业报告.md`: final report source.
-- `docs/CS599_大作业报告.pdf`: final report PDF with outline bookmarks.
+- `docs/CS599_大作业报告.pdf`: final report PDF.
 - `docs/architecture.md`: architecture and LangGraph workflow description.
 - `docs/specs/product_spec.md`: product spec.
 - `docs/specs/architecture_spec.md`: architecture spec.
@@ -19,9 +19,6 @@
 - `docs/runs/benchmark.json`: benchmark report.
 - `docs/runs/llm_prompt.json`: exported LLM test-generation prompt.
 - `docs/runs/llm_tests.json`: LLM Test Generator report.
-- `docs/runs/review.json`: Code Reviewer report.
-- `docs/runs/fix_plan.json`: Bug Fixer dry-run plan.
-- `docs/runs/unit_tests.json`: Unit Test Writer dry-run report.
 
 ## Source Code
 
@@ -30,9 +27,6 @@
 - `src/tools/software_engineer_graph_writer.py`: JSON and Markdown report writer.
 - `src/main.py`: auxiliary test pipeline CLI.
 - `src/benchmark.py`: benchmark CLI.
-- `src/review.py`: Code Reviewer CLI.
-- `src/fix.py`: Bug Fixer CLI.
-- `src/unit_tests.py`: Unit Test Writer CLI.
 - `src/llm_tests.py`: LLM Test Generator CLI.
 - `src/agents/`: agent implementations.
 - `src/llm/`: LLM config, prompt builder, and OpenAI-compatible client.

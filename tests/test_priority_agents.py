@@ -3,10 +3,8 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from src.agents.bug_fixer import FixEdit, FixPlan
 from src.agents.coverage_feedback import build_coverage_feedback
 from src.agents.llm_code_reviewer import review_repository_with_llm
-from src.agents.patch_reviewer import review_fix_plan
 from src.agents.repair_loop import plan_repair_iteration
 from src.agents.sandbox_validator import validate_generated_tests_in_sandbox
 from src.agents.test_generator import GeneratedTestSuite
@@ -61,26 +59,6 @@ class PriorityAgentsTest(unittest.TestCase):
         self.assertEqual(1, report.finding_count)
         self.assertEqual("llm_boundary_review", report.findings[0].rule)
 
-    def test_patch_reviewer_flags_dangerous_patch_content(self) -> None:
-        plan = FixPlan(
-            project_path=str(self.project_path),
-            applied=False,
-            edits=[
-                FixEdit(
-                    file_path="calculator.py",
-                    line=1,
-                    rule="dangerous_eval_fix",
-                    description="bad edit",
-                    before="x = 1",
-                    after="subprocess.run(['cmd'])",
-                )
-            ],
-        )
-        report = review_fix_plan(self.project_path, self.scan, plan)
-
-        self.assertFalse(report.passed)
-        self.assertEqual("dangerous_patch_content", report.findings[0].rule)
-
     def test_sandbox_validator_runs_generated_tests_locally(self) -> None:
         unit_report = generate_missing_unit_tests(self.project_path, self.scan)
         report = validate_generated_tests_in_sandbox(
@@ -112,10 +90,10 @@ class PriorityAgentsTest(unittest.TestCase):
         self.assertIn("calculator.divide", report.missing_functions)
 
     def test_repair_loop_plans_next_step_after_failure(self) -> None:
-        report = plan_repair_iteration(patch_review=None, sandbox_validation=None, max_iterations=1)
+        report = plan_repair_iteration(sandbox_validation=None, current_iteration=0, max_iterations=1)
 
         self.assertEqual("planned", report.status)
-        self.assertEqual("test_plan", report.next_step)
+        self.assertEqual("sandbox_validate", report.next_step)
 
 
 if __name__ == "__main__":
