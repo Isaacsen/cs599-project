@@ -10,7 +10,7 @@
 
 - [x] SDD: `docs/specs/product_spec.md`, `docs/specs/architecture_spec.md`, `docs/specs/api_spec.md`.
 - [x] Tool use / Function Calling: repo scanner, security checker, sandbox executor, report writers, LLM client.
-- [x] State management and multi-step reasoning: LangGraph `StateGraph` coordinates scan, llm_review, llm_fix, llm_tests, sandbox_validate, repair_loop, coverage_feedback, and finish nodes.
+- [x] State management and multi-step reasoning: LangGraph `StateGraph` coordinates scan, llm_review, llm_fix_plan, llm_fix, llm_tests, sandbox_validate, repair_loop, coverage_feedback, and finish nodes.
 - [x] Multi-agent collaboration: LLM Code Reviewer, LLM Code Fixer, LLM Test Generator, Sandbox Validator, Repair Loop, and Coverage Feedback.
 - [x] Observability and evaluation: JSON artifacts, Markdown software engineer report, and benchmark report.
 - [x] Permission isolation: Docker sandbox, dry-run test apply gate, generated-code security checker.

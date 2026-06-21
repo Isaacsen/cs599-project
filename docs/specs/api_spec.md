@@ -47,6 +47,7 @@ python -m src.benchmark --executor docker --output docs/runs/benchmark.json
 - `summary`
 - `scan`
 - `llm_review`
+- `llm_fix_plan`
 - `llm_fix`
 - `llm_tests`
 - `sandbox_validation`

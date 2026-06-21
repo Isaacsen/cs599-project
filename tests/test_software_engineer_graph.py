@@ -77,14 +77,39 @@ def _fake_llm_review(project_path, scan):
                 rule="llm_review",
                 message="Function should keep explicit division-by-zero behavior covered by tests.",
                 suggestion="Generate pytest coverage for normal and zero-denominator cases.",
+            ),
+            ReviewFinding(
+                file_path="risky_module.py",
+                line=10,
+                severity="low",
+                rule="llm_review",
+                message="Parser input should document accepted literal shapes.",
+                suggestion="Constrain parser inputs or document supported literals.",
+            ),
+            ReviewFinding(
+                file_path="risky_module.py",
+                line=17,
+                severity="medium",
+                rule="llm_review",
+                message="Invalid integers are indistinguishable from valid zero values.",
+                suggestion="Return None or raise a domain-specific exception.",
             )
         ],
         raw_response='{"findings":[]}',
     )
 
 
-def _fake_llm_fix(project_path, scan, llm_review=None, sandbox_validation=None, repair_actions=None, apply_changes=False):
+def _fake_llm_fix(
+    project_path,
+    scan,
+    llm_review=None,
+    fix_plan=None,
+    sandbox_validation=None,
+    repair_actions=None,
+    apply_changes=False,
+):
     root = Path(project_path).resolve()
+    target_count = fix_plan.target_count if fix_plan else 0
     return LLMCodeFixReport(
         project_path=str(root),
         status="planned",
@@ -96,7 +121,7 @@ def _fake_llm_fix(project_path, scan, llm_review=None, sandbox_validation=None, 
         fixes=[
             LLMCodeFix(
                 file_path="risky_module.py",
-                summary="Keep division behavior explicit and document parser constraints.",
+                summary=f"Apply {target_count} planned fix target(s).",
                 replacement_content=(root / "risky_module.py").read_text(encoding="utf-8"),
                 applied=False,
             )
@@ -168,10 +193,11 @@ class SoftwareEngineerGraphTest(unittest.TestCase):
         self.assertEqual("completed", result.state["status"])
         self.assertIn(result.graph_runtime, {"langgraph", "fallback"})
         self.assertEqual(
-            ["scan", "llm_review", "llm_fix", "llm_tests", "coverage_feedback", "finish"],
+            ["scan", "llm_review", "llm_fix_plan", "llm_fix", "llm_tests", "coverage_feedback", "finish"],
             result.node_trace,
         )
-        self.assertEqual(1, result.state["llm_review"].finding_count)
+        self.assertEqual(3, result.state["llm_review"].finding_count)
+        self.assertEqual(2, result.state["llm_fix_plan"].target_count)
         self.assertEqual(1, result.state["llm_fix"].fix_count)
         self.assertEqual(3, result.generated_llm_test_count)
         self.assertEqual(original_content, source_file.read_text(encoding="utf-8"))
@@ -191,6 +217,7 @@ class SoftwareEngineerGraphTest(unittest.TestCase):
             [
                 "scan",
                 "llm_review",
+                "llm_fix_plan",
                 "llm_fix",
                 "llm_tests",
                 "coverage_feedback",
@@ -216,6 +243,7 @@ class SoftwareEngineerGraphTest(unittest.TestCase):
         self.assertIn("summary", data)
         self.assertNotIn("review", data)
         self.assertNotIn("unit_tests", data)
+        self.assertIn("llm_fix_plan", data)
         self.assertIn("llm_fix", data)
         self.assertIn("llm_tests", data)
         self.assertNotIn("fix_plan", data)
@@ -269,10 +297,12 @@ class SoftwareEngineerGraphTest(unittest.TestCase):
             [
                 "scan",
                 "llm_review",
+                "llm_fix_plan",
                 "llm_fix",
                 "llm_tests",
                 "sandbox_validate",
                 "repair_loop",
+                "llm_fix_plan",
                 "llm_fix",
                 "llm_tests",
                 "sandbox_validate",
@@ -323,6 +353,7 @@ class SoftwareEngineerGraphTest(unittest.TestCase):
             [
                 "scan",
                 "llm_review",
+                "llm_fix_plan",
                 "llm_fix",
                 "llm_tests",
                 "sandbox_validate",

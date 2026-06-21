@@ -7,6 +7,7 @@ from typing import Any, TypedDict
 from src.agents.coverage_feedback import CoverageFeedbackReport, build_coverage_feedback
 from src.agents.llm_code_fixer import LLMCodeFixReport, fix_code_with_llm
 from src.agents.llm_code_reviewer import LLMCodeReviewReport, review_repository_with_llm
+from src.agents.llm_fix_planner import LLMFixPlan, plan_llm_fixes
 from src.agents.llm_test_generator import LLMTestGenerationReport, generate_llm_pytest_tests
 from src.agents.repair_loop import RepairLoopReport, plan_repair_iteration
 from src.agents.sandbox_validator import SandboxValidationReport, validate_generated_tests_in_sandbox
@@ -38,6 +39,8 @@ class SoftwareEngineerGraphState(TypedDict, total=False):
     status: str
     scan: RepositoryScanResult
     llm_review: LLMCodeReviewReport
+    llm_fix_plan: LLMFixPlan
+    llm_fix_plan_history: list[LLMFixPlan]
     llm_fix: LLMCodeFixReport
     llm_fix_history: list[LLMCodeFixReport]
     llm_tests: LLMTestGenerationReport
@@ -115,6 +118,7 @@ def build_software_engineer_graph() -> Any:
     graph = StateGraph(SoftwareEngineerGraphState)
     graph.add_node("scan", scan_node)
     graph.add_node("llm_review", llm_review_node)
+    graph.add_node("llm_fix_plan", llm_fix_plan_node)
     graph.add_node("llm_fix", llm_fix_node)
     graph.add_node("llm_tests", llm_tests_node)
     graph.add_node("sandbox_validate", sandbox_validate_node)
@@ -124,7 +128,8 @@ def build_software_engineer_graph() -> Any:
 
     graph.add_edge(START, "scan")
     graph.add_edge("scan", "llm_review")
-    graph.add_edge("llm_review", "llm_fix")
+    graph.add_edge("llm_review", "llm_fix_plan")
+    graph.add_edge("llm_fix_plan", "llm_fix")
     graph.add_edge("llm_fix", "llm_tests")
     graph.add_conditional_edges(
         "llm_tests",
@@ -139,7 +144,7 @@ def build_software_engineer_graph() -> Any:
         "repair_loop",
         _route_after_repair_loop,
         {
-            "llm_fix": "llm_fix",
+            "llm_fix_plan": "llm_fix_plan",
             "llm_tests": "llm_tests",
             "coverage_feedback": "coverage_feedback",
         },
@@ -166,12 +171,25 @@ def llm_review_node(state: SoftwareEngineerGraphState) -> SoftwareEngineerGraphS
     }
 
 
+def llm_fix_plan_node(state: SoftwareEngineerGraphState) -> SoftwareEngineerGraphState:
+    llm_fix_plan = plan_llm_fixes(
+        state.get("llm_review"),
+        sandbox_validation=state.get("sandbox_validation"),
+    )
+    return {
+        "llm_fix_plan": llm_fix_plan,
+        "llm_fix_plan_history": [*state.get("llm_fix_plan_history", []), llm_fix_plan],
+        "node_trace": [*state.get("node_trace", []), "llm_fix_plan"],
+    }
+
+
 def llm_fix_node(state: SoftwareEngineerGraphState) -> SoftwareEngineerGraphState:
     repair_loop = state.get("repair_loop")
     llm_fix = fix_code_with_llm(
         state["project_path"],
         state["scan"],
         llm_review=state.get("llm_review"),
+        fix_plan=state.get("llm_fix_plan"),
         sandbox_validation=state.get("sandbox_validation"),
         repair_actions=repair_loop.actions if repair_loop else [],
         apply_changes=state.get("apply_fixes", False),
@@ -279,6 +297,7 @@ def _format_timeline(state: SoftwareEngineerGraphState, node_trace: list[str]) -
     labels = {
         "scan": "Repo scan",
         "llm_review": "LLM code review",
+        "llm_fix_plan": "LLM fix planner",
         "llm_fix": "LLM code fixer",
         "llm_tests": "LLM test writer",
         "sandbox_validate": "Sandbox pytest",
@@ -299,6 +318,8 @@ def _node_status(state: SoftwareEngineerGraphState, node: str, occurrence: int =
         return f"{len(state['scan'].source_files)} source file(s)"
     if node == "llm_review" and "llm_review" in state:
         return f"{state['llm_review'].finding_count} finding(s)"
+    if node == "llm_fix_plan" and "llm_fix_plan" in state:
+        return f"{state['llm_fix_plan'].target_count} target(s), {state['llm_fix_plan'].status}"
     if node == "llm_fix" and "llm_fix" in state:
         return f"{state['llm_fix'].fix_count} fix(es), {state['llm_fix'].status}"
     if node == "llm_tests" and "llm_tests" in state:
@@ -322,6 +343,9 @@ def _format_highlights(state: SoftwareEngineerGraphState) -> list[str]:
     if llm_review and llm_review.findings:
         first = llm_review.findings[0]
         highlights.append(f"  - LLM review: [{first.severity}] {first.message}")
+    fix_plan = state.get("llm_fix_plan")
+    if fix_plan:
+        highlights.append(f"  - LLM fix plan: {fix_plan.target_count} target(s), {fix_plan.status}")
     llm_fix = state.get("llm_fix")
     if llm_fix:
         highlights.append(f"  - LLM fix: {llm_fix.fix_count} fix(es), {llm_fix.status}")
@@ -369,7 +393,7 @@ def _coverage_status(state: SoftwareEngineerGraphState) -> str:
 def _route_after_repair_loop(state: SoftwareEngineerGraphState) -> str:
     report = state.get("repair_loop")
     if report is not None and report.next_step == "llm_fix":
-        return "llm_fix"
+        return "llm_fix_plan"
     if report is not None and report.next_step == "llm_tests":
         return "llm_tests"
     return "coverage_feedback"
@@ -392,13 +416,15 @@ def _run_fallback_graph(initial_state: SoftwareEngineerGraphState) -> SoftwareEn
     state: SoftwareEngineerGraphState = dict(initial_state)
     state.update(scan_node(state))
     state.update(llm_review_node(state))
+    state.update(llm_fix_plan_node(state))
     state.update(llm_fix_node(state))
     state.update(llm_tests_node(state))
     if _route_after_generated_tests(state) == "sandbox_validate":
         state.update(sandbox_validate_node(state))
         state.update(repair_loop_node(state))
-        while _route_after_repair_loop(state) in {"llm_fix", "llm_tests"}:
-            if _route_after_repair_loop(state) == "llm_fix":
+        while _route_after_repair_loop(state) in {"llm_fix_plan", "llm_tests"}:
+            if _route_after_repair_loop(state) == "llm_fix_plan":
+                state.update(llm_fix_plan_node(state))
                 state.update(llm_fix_node(state))
             state.update(llm_tests_node(state))
             state.update(sandbox_validate_node(state))

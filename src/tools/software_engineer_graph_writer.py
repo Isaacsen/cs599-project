@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Any
 
 from src.agents.llm_code_fixer import LLMCodeFixReport
+from src.agents.llm_fix_planner import LLMFixPlan
 from src.tools.llm_test_writer import llm_test_report_to_dict
 from src.workflow.software_engineer_graph import SoftwareEngineerGraphResult
 
@@ -30,6 +31,10 @@ def software_engineer_graph_result_to_dict(result: SoftwareEngineerGraphResult) 
         payload["scan"] = asdict(state["scan"])
     if "llm_review" in state:
         payload["llm_review"] = _llm_review_to_dict(state["llm_review"])
+    if "llm_fix_plan" in state:
+        payload["llm_fix_plan"] = _llm_fix_plan_to_dict(state["llm_fix_plan"])
+    if "llm_fix_plan_history" in state:
+        payload["llm_fix_plan_history"] = [_llm_fix_plan_to_dict(plan) for plan in state["llm_fix_plan_history"]]
     if "llm_fix" in state:
         payload["llm_fix"] = _llm_fix_to_dict(state["llm_fix"])
     if "llm_fix_history" in state:
@@ -98,6 +103,8 @@ def format_software_engineer_markdown(result: SoftwareEngineerGraphResult) -> st
 
     lines.extend(["", "## LLM Review Findings", ""])
     lines.extend(_finding_table(state.get("llm_review")))
+    lines.extend(["", "## LLM Fix Plan", ""])
+    lines.extend(_fix_plan_section(state.get("llm_fix_plan")))
     lines.extend(["", "## LLM Code Fixes", ""])
     lines.extend(_fix_section(state.get("llm_fix")))
     lines.extend(["", "## Sandbox Validation", ""])
@@ -151,6 +158,27 @@ def _llm_fix_to_dict(report: LLMCodeFixReport) -> dict[str, Any]:
     }
 
 
+def _llm_fix_plan_to_dict(plan: LLMFixPlan) -> dict[str, Any]:
+    return {
+        "status": plan.status,
+        "rationale": plan.rationale,
+        "summary": {
+            "target_count": plan.target_count,
+        },
+        "targets": [
+            {
+                "finding_index": target.finding_index,
+                "file_path": target.file_path,
+                "line": target.line,
+                "severity": target.severity,
+                "rule": target.rule,
+                "reason": target.reason,
+            }
+            for target in plan.targets
+        ],
+    }
+
+
 def _status(report: Any) -> str:
     if report is None:
         return "not_run"
@@ -180,6 +208,16 @@ def _node_result(state: dict[str, Any], node: str, occurrence: int = 1) -> str:
     mapping = {
         "scan": ("scan", lambda: f"{len(state['scan'].source_files)} source file(s)"),
         "llm_review": ("llm_review", lambda: f"{state['llm_review'].finding_count} finding(s)"),
+        "llm_fix_plan": (
+            "llm_fix_plan",
+            lambda: _history_result(
+                state,
+                "llm_fix_plan_history",
+                "llm_fix_plan",
+                occurrence,
+                lambda plan: f"{plan.target_count} target(s), {plan.status}",
+            ),
+        ),
         "llm_fix": ("llm_fix", lambda: _history_result(state, "llm_fix_history", "llm_fix", occurrence, _fix_result)),
         "llm_tests": (
             "llm_tests",
@@ -285,6 +323,29 @@ def _fix_section(report: Any) -> list[str]:
     lines = ["| File | Applied | Summary |", "| --- | --- | --- |"]
     for fix in report.fixes[:8]:
         lines.append(f"| `{_cell(fix.file_path)}` | `{fix.applied}` | {_cell(fix.summary)} |")
+    return lines
+
+
+def _fix_plan_section(plan: Any) -> list[str]:
+    if plan is None:
+        return ["LLM fix planner was not run."]
+    if not plan.targets:
+        return [f"Status: `{plan.status}`. No fix targets were selected."]
+    lines = ["| Order | Finding | Severity | Reason |", "| ---: | --- | --- | --- |"]
+    for order, target in enumerate(plan.targets, start=1):
+        finding = f"{target.file_path}:{target.line} ({target.rule})"
+        lines.append(
+            "| "
+            + " | ".join(
+                [
+                    str(order),
+                    _cell(finding),
+                    _cell(target.severity),
+                    _cell(target.reason),
+                ]
+            )
+            + " |"
+        )
     return lines
 
 

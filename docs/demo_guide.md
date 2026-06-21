@@ -36,7 +36,7 @@ python -m src.engineer examples/review_target --run-sandbox --sandbox-executor d
 
 演示要点：
 
-- LangGraph StateGraph 串联 LLM 审查、LLM 修复建议、LLM 测试生成、Docker 沙箱验证、修复循环和覆盖反馈。
+- LangGraph StateGraph 串联 LLM 审查、LLM 修复规划、LLM 修复建议、LLM 测试生成、Docker 沙箱验证、修复循环和覆盖反馈。
 - 默认 dry-run，不修改样例源码。
 - JSON 报告写入 `docs/runs/software_engineer.json`。
 - Markdown 报告写入 `docs/runs/software_engineer.md`。

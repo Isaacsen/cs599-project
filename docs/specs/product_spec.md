@@ -37,5 +37,5 @@ Software Engineer Agent 面向 Python 项目，提供真实 LLM 语义审查、L
 ## 5. 主流程
 
 ```text
-scan -> llm_review -> llm_fix -> llm_tests -> sandbox_validate? -> repair_loop? -> (llm_fix|llm_tests)* -> coverage_feedback -> finish
+scan -> llm_review -> llm_fix_plan -> llm_fix -> llm_tests -> sandbox_validate? -> repair_loop? -> (llm_fix_plan|llm_tests)* -> coverage_feedback -> finish
 ```

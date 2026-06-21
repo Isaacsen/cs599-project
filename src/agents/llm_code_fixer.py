@@ -5,6 +5,8 @@ import re
 from dataclasses import dataclass
 from pathlib import Path
 
+from src.agents.code_reviewer import ReviewFinding
+from src.agents.llm_fix_planner import LLMFixPlan, selected_findings
 from src.agents.llm_code_reviewer import LLMCodeReviewReport
 from src.agents.sandbox_validator import SandboxValidationReport
 from src.llm.client import LLMClient, OpenAICompatibleLLMClient
@@ -45,6 +47,7 @@ def fix_code_with_llm(
     project_path: str | Path,
     scan: RepositoryScanResult,
     llm_review: LLMCodeReviewReport | None = None,
+    fix_plan: LLMFixPlan | None = None,
     sandbox_validation: SandboxValidationReport | None = None,
     repair_actions: list[str] | None = None,
     apply_changes: bool = False,
@@ -66,7 +69,7 @@ def fix_code_with_llm(
             fixes=[],
         )
 
-    prompt = _build_fix_prompt(root, scan, llm_review, sandbox_validation, repair_actions or [], max_files)
+    prompt = _build_fix_prompt(root, scan, llm_review, fix_plan, sandbox_validation, repair_actions or [], max_files)
     active_client = client or OpenAICompatibleLLMClient(active_config, timeout_seconds=120)
     try:
         raw_response = active_client.generate(prompt)
@@ -103,6 +106,7 @@ def _build_fix_prompt(
     root: Path,
     scan: RepositoryScanResult,
     llm_review: LLMCodeReviewReport | None,
+    fix_plan: LLMFixPlan | None,
     sandbox_validation: SandboxValidationReport | None,
     repair_actions: list[str],
     max_files: int,
@@ -117,8 +121,11 @@ def _build_fix_prompt(
         "- Do not include markdown fences.",
         "- Preserve public APIs unless a review finding requires a safer behavior.",
         "",
-        "LLM review findings:",
-        _format_review(llm_review),
+        "Selected fix plan:",
+        _format_fix_plan(fix_plan),
+        "",
+        "Selected LLM review findings:",
+        _format_findings(selected_findings(llm_review, fix_plan)),
         "",
         "Latest sandbox result:",
         _format_sandbox(sandbox_validation),
@@ -139,11 +146,23 @@ def _build_fix_prompt(
     )
 
 
-def _format_review(report: LLMCodeReviewReport | None) -> str:
-    if report is None or not report.findings:
+def _format_fix_plan(plan: LLMFixPlan | None) -> str:
+    if plan is None or not plan.targets:
+        return "- no selected targets"
+    lines = [f"- status: {plan.status}", f"- rationale: {plan.rationale}", "- ordered targets:"]
+    for target in plan.targets:
+        lines.append(
+            f"  - #{target.finding_index} {target.file_path}:{target.line} "
+            f"[{target.severity}] {target.rule}; reason: {target.reason}"
+        )
+    return "\n".join(lines)
+
+
+def _format_findings(findings: list[ReviewFinding]) -> str:
+    if not findings:
         return "- none"
     lines: list[str] = []
-    for finding in report.findings[:12]:
+    for finding in findings:
         lines.append(
             f"- {finding.file_path}:{finding.line} [{finding.severity}] "
             f"{finding.message} Suggestion: {finding.suggestion}"

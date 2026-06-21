@@ -78,12 +78,13 @@ python -m src.engineer examples/review_target --run-sandbox --sandbox-executor d
 START
   -> scan
   -> llm_review
+  -> llm_fix_plan
   -> llm_fix
   -> llm_tests
   -> sandbox_validate / coverage_feedback
   -> sandbox_validate
   -> repair_loop
-      -> llm_fix          # 像代码缺陷的失败
+      -> llm_fix_plan     # code-fix retry first replans selected findings
       -> llm_tests        # 像生成测试自身的问题
       -> llm_tests
       -> coverage_feedback
