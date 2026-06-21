@@ -1,4 +1,4 @@
-import shutil
+﻿import shutil
 import tempfile
 import unittest
 from pathlib import Path
@@ -91,7 +91,7 @@ class PriorityAgentsTest(unittest.TestCase):
 
         self.assertTrue(report.passed)
         self.assertEqual(4, report.analysis.total)
-        self.assertIn("tests/test_testguard_generated.py", report.generated_test_files)
+        self.assertIn("tests/test_software_engineer_generated.py", report.generated_test_files)
 
     def test_coverage_feedback_reports_missing_functions(self) -> None:
         unit_report = UnitTestReport(

@@ -1,10 +1,10 @@
-# Product Spec: TestGuard Agent
+﻿# Product Spec: Software Engineer Agent
 
 ## 1. 项目背景
 
 企业级软件项目不仅需要持续测试，还需要持续代码审查、缺陷修复和回归保障。传统流程依赖人工反复阅读代码、定位风险、编写单测和运行验证，效率低且容易遗漏边界场景。LLM 与 Agent 可以辅助软件工程师完成这些任务，但模型生成的代码和修复建议如果直接在宿主机执行，可能带来文件破坏、网络访问、资源耗尽和敏感信息泄露风险。
 
-TestGuard Agent 目标是构建一个面向 Python 项目的软件工程师 Agent 与权限隔离执行平台：它能够理解项目结构，执行代码审查，生成自动修 Bug 计划，补齐缺失覆盖单元测试，调用 LLM 生成 pytest，并在权限隔离环境中执行验证，最后输出结构化报告和评估证据。
+Software Engineer Agent 目标是构建一个面向 Python 项目的软件工程师 Agent 与权限隔离执行平台：它能够理解项目结构，执行代码审查，生成自动修 Bug 计划，补齐缺失覆盖单元测试，调用 LLM 生成 pytest，并在权限隔离环境中执行验证，最后输出结构化报告和评估证据。
 
 ## 2. 用户角色
 
@@ -24,89 +24,26 @@ TestGuard Agent 目标是构建一个面向 Python 项目的软件工程师 Agen
 9. 通过基于 LangGraph StateGraph 的统一软件工程师 Agent 编排规则审查、LLM 审查、修复计划、Patch 审查、单测生成、LLM 测试生成、沙箱验证、修复循环和覆盖反馈。
 10. 接入 OpenAI-compatible LLM 测试生成，支持 DashScope、DeepSeek 等 provider。
 
-## 4. 第一阶段范围
+## 4. 当前交付范围
 
-第一阶段不接入 LLM，先实现可运行的最小闭环：
-
-```text
-输入 Python 项目路径 -> 扫描项目 -> 执行已有 pytest 测试 -> 输出结构化结果
-```
-
-完成该闭环后，再逐步加入测试规划 Agent、测试生成 Agent 和 Docker 权限隔离。
-
-第二阶段实现 Docker 权限隔离执行器：
+当前项目的主交付是基于 LangGraph `StateGraph` 的 Software Engineer Agent。推荐演示流程如下：
 
 ```text
-输入 Python 项目路径 -> 扫描项目 -> 在 Docker 沙箱中执行 pytest -> 输出结构化结果
+Python Project
+  -> Repo Scanner
+  -> Rule Code Reviewer Agent
+  -> LLM Code Reviewer Agent
+  -> Bug Fixer Agent
+  -> Patch Reviewer Agent
+  -> Unit Test Writer Agent
+  -> LLM Test Generator Agent
+  -> Sandbox Validator Agent
+  -> Repair Loop Agent
+  -> Coverage Feedback Agent
+  -> JSON / Markdown Report
 ```
 
-第三阶段加入可离线演示的规则型 Test Planner Agent 与 Test Generator Agent：
-
-```text
-输入 Python 项目路径 -> 扫描项目 -> 分析 AST -> 生成测试计划 -> 生成 pytest 测试 -> 临时工作区执行 -> 输出结构化结果
-```
-
-该阶段仍不依赖在线 API，目的是先验证自动测试生成闭环，后续再将规则型生成器替换为 LLM 生成器。
-
-第四阶段加入结果分析与 JSON 运行报告：
-
-```text
-pytest 输出 -> Result Analyzer Agent -> 测试统计汇总 -> JSON trace -> 评估证据
-```
-
-第五阶段加入 Benchmark 评估：
-
-```text
-Benchmark Cases -> Pipeline Runs -> Metrics Aggregation -> Benchmark JSON Report
-```
-
-第六阶段加入失败诊断：
-
-```text
-pytest 输出 + PytestSummary -> Failure Diagnosis -> key findings + suggestions
-```
-
-第七阶段显式化安全检查：
-
-```text
-Generated Test Code -> Security Checker -> SecurityCheckResult -> PipelineReport
-```
-
-第八阶段加入 LLM Prompt 导出：
-
-```text
-TestPlan + Source Context -> LLM Prompt Builder -> Prompt JSON Artifact
-```
-
-第九阶段加入代码审查 Agent：
-
-```text
-Python Source -> Code Reviewer Agent -> ReviewFinding List -> Review JSON Report
-```
-
-第十阶段加入自动修 Bug Agent：
-
-```text
-Python Source -> Bug Fixer Agent -> FixPlan -> Optional Apply
-```
-
-第十一阶段加入缺失覆盖单测生成 Agent：
-
-```text
-Python Source + Existing Tests -> Unit Test Writer Agent -> Generated Pytest Suite -> Optional Apply
-```
-
-第十二阶段加入软件工程师 Agent 编排：
-
-```text
-Python Project -> Software Engineer Agent -> ReviewReport + FixPlan + UnitTestReport
-```
-
-第十三阶段加入 LLM 测试生成 Agent：
-
-```text
-TestPlan + Source Context -> LLM Test Generator Agent -> SecurityCheckResult -> LLM Test Report
-```
+系统仍保留早期形成的辅助能力：本地 / Docker pytest 执行、规则型测试规划与生成、结果分析、失败诊断、Benchmark、LLM Prompt 导出，以及独立的 `review`、`fix`、`unit_tests`、`llm_tests` CLI。这些辅助入口服务于课程演示、离线兜底和可复现评估；当前架构的中心是 `src.engineer` 的多 Agent 工作流。
 
 ## 5. 功能需求
 
@@ -126,9 +63,9 @@ TestPlan + Source Context -> LLM Test Generator Agent -> SecurityCheckResult -> 
 
 系统应输出可读的命令行报告，包含语言、测试框架、源码文件数量、测试文件数量、测试结果和耗时。
 
-### FR-5 后续 Agent 扩展
+### FR-5 Agent 模块边界
 
-系统应预留 Agent 模块边界，后续支持 Repo Analyzer、Test Planner、Test Generator、Result Analyzer 等角色。
+系统应保持清晰的 Agent 模块边界，支持 Repo Scanner、Code Reviewer、LLM Code Reviewer、Bug Fixer、Patch Reviewer、Unit Test Writer、LLM Test Generator、Sandbox Validator、Repair Loop、Coverage Feedback、Result Analyzer 和 Failure Diagnoser 等角色独立测试与组合编排。
 
 ### FR-6 Docker 权限隔离执行
 
@@ -140,7 +77,7 @@ TestPlan + Source Context -> LLM Test Generator Agent -> SecurityCheckResult -> 
 
 ### FR-8 测试规划
 
-系统应为公开函数生成测试计划，包含目标函数、测试场景和设计理由，为后续 LLM Agent 和评估提供可解释中间产物。
+系统应为公开函数生成测试计划，包含目标函数、测试场景和设计理由，为规则测试生成、LLM 测试生成和评估提供可解释中间产物。
 
 ### FR-9 生成代码安全校验
 
@@ -164,7 +101,7 @@ TestPlan + Source Context -> LLM Test Generator Agent -> SecurityCheckResult -> 
 
 ### FR-14 LLM Prompt 导出
 
-系统应能基于测试计划和源码上下文导出 LLM 测试生成 Prompt，便于后续接入 DashScope、DeepSeek、OpenAI 或本地模型，同时不得写出 API Key 明文。
+系统应能基于测试计划和源码上下文导出 LLM 测试生成 Prompt，支持接入 DashScope、DeepSeek、OpenAI 或本地模型，同时不得写出 API Key 明文。
 
 ### FR-15 代码审查
 

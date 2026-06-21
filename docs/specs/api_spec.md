@@ -1,8 +1,10 @@
-# API Spec: TestGuard Agent
+﻿# API Spec: Software Engineer Agent
 
 ## 1. 命令行 API
 
-### 1.1 执行测试闭环
+当前主入口是 `python -m src.engineer`，用于运行完整 LangGraph 软件工程师 Agent。`src.main`、`src.benchmark`、`src.review`、`src.fix`、`src.unit_tests` 和 `src.llm_tests` 是辅助 CLI，用于单独演示、调试或生成课程评估工件。
+
+### 1.1 执行辅助测试闭环
 
 ```bash
 python -m src.main <project_path> [--timeout SECONDS] [--executor local|docker] [--docker-image IMAGE] [--generate-tests] [--report-json PATH] [--export-llm-prompt PATH]
@@ -13,7 +15,7 @@ python -m src.main <project_path> [--timeout SECONDS] [--executor local|docker] 
 - `project_path`：待扫描和测试的 Python 项目路径。
 - `--timeout`：测试执行超时时间，默认 30 秒。
 - `--executor`：测试执行后端，默认 `local`，可选 `docker`。
-- `--docker-image`：Docker 执行后端使用的镜像，默认 `testguard-python:latest`。
+- `--docker-image`：Docker 执行后端使用的镜像，默认 `software-engineer-agent-python:latest`。
 - `--generate-tests`：执行前生成 pytest 测试，并在临时项目副本中运行。
 - `--report-json`：可选 JSON 报告输出路径。
 - `--export-llm-prompt`：可选 LLM 测试生成 Prompt 输出路径，需要配合 `--generate-tests` 使用。
@@ -27,7 +29,7 @@ python -m src.main examples/sample_python_project --timeout 30
 Docker 沙箱执行示例：
 
 ```bash
-docker build -f Dockerfile.sandbox -t testguard-python .
+docker build -f Dockerfile.sandbox -t software-engineer-agent-python .
 python -m src.main examples/sample_python_project --executor docker
 ```
 
@@ -52,7 +54,7 @@ python -m src.main examples/sample_python_project --generate-tests --export-llm-
 输出：
 
 ```text
-[TestGuard Agent MVP]
+[Software Engineer Agent Auxiliary Test Pipeline]
 
 Project: examples/sample_python_project
 Language: Python
@@ -90,7 +92,7 @@ python -m src.benchmark [--case name=project_path] [--timeout SECONDS] [--execut
 - `--case`：可选 Benchmark 用例，格式为 `name=project_path`，可重复传入。
 - `--timeout`：每个用例的测试执行超时时间，默认 30 秒。
 - `--executor`：测试执行后端，默认 `local`，可选 `docker`。
-- `--docker-image`：Docker 执行后端使用的镜像，默认 `testguard-python:latest`。
+- `--docker-image`：Docker 执行后端使用的镜像，默认 `software-engineer-agent-python:latest`。
 - `--output`：Benchmark JSON 输出路径，默认 `docs/runs/benchmark.json`。
 
 示例：
@@ -102,7 +104,7 @@ python -m src.benchmark --executor docker --output docs/runs/benchmark.json
 输出：
 
 ```text
-[TestGuard Benchmark]
+[Software Engineer Agent Benchmark]
 
 Total Cases: 1
 Passed Cases: 1
@@ -134,7 +136,7 @@ python -m src.review examples/review_target --output docs/runs/review.json
 输出：
 
 ```text
-[TestGuard Code Review]
+[Software Engineer Agent Code Review]
 
 Project: examples/review_target
 Findings: 7
@@ -164,7 +166,7 @@ python -m src.fix examples/review_target --output docs/runs/fix_plan.json
 输出：
 
 ```text
-[TestGuard Bug Fix]
+[Software Engineer Agent Bug Fix]
 
 Project: examples/review_target
 Applied: False
@@ -182,7 +184,7 @@ python -m src.unit_tests <project_path> [--output PATH] [--test-file PATH] [--ma
 
 - `project_path`：待分析的 Python 项目路径。
 - `--output`：单测生成 JSON 输出路径，默认 `docs/runs/unit_tests.json`。
-- `--test-file`：启用 `--apply` 时写入的项目内测试文件路径，默认 `tests/test_testguard_generated.py`。
+- `--test-file`：启用 `--apply` 时写入的项目内测试文件路径，默认 `tests/test_software_engineer_generated.py`。
 - `--max-functions`：最多考虑的公开函数数量，默认 8。
 - `--apply`：可选开关，启用后将生成的 pytest 文件写入目标项目；不传入时只生成 dry-run 报告。
 
@@ -195,11 +197,11 @@ python -m src.unit_tests examples/review_target --output docs/runs/unit_tests.js
 输出：
 
 ```text
-[TestGuard Unit Test Writer]
+[Software Engineer Agent Unit Test Writer]
 
 Project: examples/review_target
 Applied: False
-Test File: tests/test_testguard_generated.py
+Test File: tests/test_software_engineer_generated.py
 Planned Test Cases: 3
 Generated Test Cases: 3
 Security Check: passed
@@ -221,11 +223,11 @@ python -m src.engineer <project_path> [--output PATH] [--apply-fixes] [--apply-t
 - `--use-llm-tests`：可选开关，启用后在 LangGraph 工作流中追加 LLM 测试生成节点。
 - `--run-sandbox`：可选开关，启用沙箱验证节点。
 - `--sandbox-executor`：沙箱验证后端，支持 `local` 或 `docker`，默认 `docker`。
-- `--docker-image`：Docker 沙箱镜像，默认 `testguard-python:latest`。
+- `--docker-image`：Docker 沙箱镜像，默认 `software-engineer-agent-python:latest`。
 - `--timeout`：沙箱验证超时时间，默认 30 秒。
 - `--repair-iterations`：修复循环规划预算，默认 1。
-- `--test-file`：启用 `--apply-tests` 时写入的项目内测试文件路径，默认 `tests/test_testguard_generated.py`。
-- `--llm-test-file`：启用 `--apply-tests` 时写入的 LLM 生成测试文件路径，默认 `tests/test_testguard_llm_generated.py`。
+- `--test-file`：启用 `--apply-tests` 时写入的项目内测试文件路径，默认 `tests/test_software_engineer_generated.py`。
+- `--llm-test-file`：启用 `--apply-tests` 时写入的 LLM 生成测试文件路径，默认 `tests/test_software_engineer_llm_generated.py`。
 - `--max-functions`：最多考虑的公开函数数量，默认 8。
 
 示例：
@@ -237,7 +239,7 @@ python -m src.engineer examples/review_target --use-llm-review --use-llm-tests -
 输出：
 
 ```text
-[TestGuard Software Engineer LangGraph]
+[Software Engineer Agent LangGraph]
 
 Project: examples/review_target
 Status: completed
@@ -264,7 +266,7 @@ python -m src.llm_tests <project_path> [--output PATH] [--test-file PATH] [--max
 
 - `project_path`：待分析的 Python 项目路径。
 - `--output`：LLM 测试生成 JSON 输出路径，默认 `docs/runs/llm_tests.json`。
-- `--test-file`：启用 `--apply` 时写入的项目内测试文件路径，默认 `tests/test_testguard_llm_generated.py`。
+- `--test-file`：启用 `--apply` 时写入的项目内测试文件路径，默认 `tests/test_software_engineer_llm_generated.py`。
 - `--max-functions`：最多考虑的公开函数数量，默认 8。
 - `--apply`：可选开关，启用后将 LLM 生成的 pytest 文件写入目标项目；不传入时只生成 dry-run 报告。
 
@@ -277,7 +279,7 @@ python -m src.llm_tests examples/sample_python_project --output docs/runs/llm_te
 输出：
 
 ```text
-[TestGuard LLM Test Generator]
+[Software Engineer Agent LLM Test Generator]
 
 Project: examples/sample_python_project
 Status: generated
@@ -476,12 +478,23 @@ Security Check: passed
 - `project_path: str`
 - `apply_fixes: bool`
 - `apply_tests: bool`
+- `use_llm_review: bool`
 - `use_llm_tests: bool`
+- `run_sandbox: bool`
+- `sandbox_executor: str`
+- `docker_image: str`
+- `timeout_seconds: int`
+- `repair_iterations: int`
 - `scan: RepositoryScanResult`
 - `review: ReviewReport`
+- `llm_review: LLMCodeReviewReport | None`
 - `fix_plan: FixPlan`
+- `patch_review: PatchReviewReport`
 - `unit_tests: UnitTestReport`
 - `llm_tests: LLMTestGenerationReport | None`
+- `sandbox_validation: SandboxValidationReport | None`
+- `repair_loop: RepairLoopReport | None`
+- `coverage_feedback: CoverageFeedbackReport | None`
 - `node_trace: list[str]`
 - `graph_runtime: str`
 - `status: str`
@@ -522,12 +535,62 @@ Security Check: passed
 
 - `generated_test_count: int`
 
+### 2.21 LLMCodeReviewReport
+
+字段：
+
+- `project_path: str`
+- `provider: str`
+- `model: str`
+- `api_key_set: bool`
+- `api_key_env: str`
+- `findings: list[LLMReviewFinding]`
+
+### 2.22 PatchReviewReport
+
+字段：
+
+- `project_path: str`
+- `status: str`
+- `issues: list[str]`
+- `checked_edits: int`
+
+### 2.23 SandboxValidationReport
+
+字段：
+
+- `project_path: str`
+- `status: str`
+- `executor: str`
+- `execution: TestExecutionResult`
+- `analysis: PytestSummary`
+- `diagnosis: FailureDiagnosis`
+
+### 2.24 RepairLoopReport
+
+字段：
+
+- `status: str`
+- `next_step: str`
+- `iterations_used: int`
+- `max_iterations: int`
+- `actions: list[str]`
+
+### 2.25 CoverageFeedbackReport
+
+字段：
+
+- `project_path: str`
+- `covered_functions: list[str]`
+- `missing_functions: list[str]`
+- `coverage_ratio: float`
+
 ## 3. 后续 HTTP API 规划
 
 后续如果加入 FastAPI 服务，计划提供：
 
-- `POST /runs`：创建一次测试生成与执行任务。
+- `POST /engineer-runs`：创建一次软件工程师 Agent 任务。
 - `GET /runs/{run_id}`：查询任务状态和报告。
 - `GET /runs/{run_id}/trace`：查看 Agent 运行轨迹。
 
-第一阶段优先保证命令行闭环稳定运行。
+当前优先保证命令行 Agent 闭环稳定运行，HTTP API 不属于课程交付主线。

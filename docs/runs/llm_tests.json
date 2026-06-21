@@ -2,7 +2,7 @@
   "project_path": "G:\\cs599-project\\examples\\sample_python_project",
   "status": "generated",
   "applied": false,
-  "test_file_path": "tests/test_testguard_llm_generated.py",
+  "test_file_path": "tests/test_software_engineer_llm_generated.py",
   "summary": {
     "generated_test_count": 2,
     "security_check_passed": true
@@ -30,7 +30,7 @@
     ]
   },
   "prompt": {
-    "system": "You are TestGuard Agent, an expert Python test generation assistant. Generate safe pytest tests only. Do not use network access, subprocesses, file system mutation, eval, exec, or hardcoded secrets.",
+    "system": "You are Software Engineer Agent, an expert Python test generation assistant. Generate safe pytest tests only. Do not use network access, subprocesses, file system mutation, eval, exec, or hardcoded secrets.",
     "user": "Generate pytest tests for the following planned cases.\n\nReturn only Python code for one pytest file.\n\nTest plan:\n\n1. Function: calculator.add\n   Scenario: numeric addition happy path\n   Rationale: Addition-like functions should preserve basic arithmetic behavior.\n2. Function: calculator.divide\n   Scenario: division happy path and zero-division boundary\n   Rationale: Division-like functions need both normal input and denominator-zero coverage.\n\nSource context:\n\n# calculator.py\ndef add(a: float, b: float) -> float:\n    return a + b\n\n\ndef divide(a: float, b: float) -> float:\n    return a / b\n",
     "covered_functions": [
       "calculator.add",
@@ -42,8 +42,8 @@
     "violations": []
   },
   "suite": {
-    "test_file_name": "test_testguard_llm_generated.py",
-    "content": "import pytest\n\nfrom calculator import add, divide\n\n\nclass TestAdd:\n    \"\"\"Tests for calculator.add.\"\"\"\n\n    def test_add_two_positive_numbers(self) -> None:\n        assert add(2.0, 3.0) == 5.0\n\n    def test_add_positive_and_negative(self) -> None:\n        assert add(5.0, -2.0) == 3.0\n\n    def test_add_two_negative_numbers(self) -> None:\n        assert add(-1.5, -2.5) == -4.0\n\n    def test_add_zero_identity(self) -> None:\n        assert add(7.0, 0.0) == 7.0\n        assert add(0.0, 7.0) == 7.0\n\n    def test_add_floats(self) -> None:\n        assert add(0.1, 0.2) == pytest.approx(0.3)\n\n\nclass TestDivide:\n    \"\"\"Tests for calculator.divide.\"\"\"\n\n    def test_divide_even_result(self) -> None:\n        assert divide(10.0, 2.0) == 5.0\n\n    def test_divide_fractional_result(self) -> None:\n        assert divide(1.0, 4.0) == 0.25\n\n    def test_divide_negative_numerator(self) -> None:\n        assert divide(-6.0, 3.0) == -2.0\n\n    def test_divide_negative_denominator(self) -> None:\n        assert divide(6.0, -3.0) == -2.0\n\n    def test_divide_two_negatives(self) -> None:\n        assert divide(-6.0, -3.0) == 2.0\n\n    def test_divide_by_one_returns_numerator(self) -> None:\n        assert divide(42.0, 1.0) == 42.0\n\n    def test_divide_zero_numerator(self) -> None:\n        assert divide(0.0, 5.0) == 0.0\n\n    def test_divide_by_zero_raises_zero_division_error(self) -> None:\n        with pytest.raises(ZeroDivisionError):\n            divide(1.0, 0.0)\n\n    def test_divide_zero_by_zero_raises_zero_division_error(self) -> None:\n        with pytest.raises(ZeroDivisionError):\n            divide(0.0, 0.0)\n",
+    "test_file_name": "test_software_engineer_llm_generated.py",
+    "content": "import pytest\n\nfrom calculator import add, divide\n\n\n@pytest.mark.parametrize(\n    \"a, b, expected\",\n    [\n        (1, 2, 3),\n        (0, 0, 0),\n        (-1, 1, 0),\n        (2.5, 4.5, 7.0),\n        (-3.2, -1.8, -5.0),\n    ],\n)\ndef test_add_happy_path(a, b, expected):\n    assert add(a, b) == expected\n\n\n@pytest.mark.parametrize(\n    \"a, b, expected\",\n    [\n        (6, 3, 2.0),\n        (5, 2, 2.5),\n        (-6, 3, -2.0),\n        (0, 5, 0.0),\n        (7.5, 2.5, 3.0),\n    ],\n)\ndef test_divide_happy_path(a, b, expected):\n    assert divide(a, b) == expected\n\n\ndef test_divide_by_zero_raises():\n    with pytest.raises(ZeroDivisionError):\n        divide(1, 0)\n",
     "covered_functions": [
       "calculator.add",
       "calculator.divide"

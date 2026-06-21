@@ -1,4 +1,4 @@
-import shutil
+﻿import shutil
 import tempfile
 import unittest
 from pathlib import Path
@@ -28,7 +28,7 @@ class SoftwareEngineerAgentTest(unittest.TestCase):
         self.assertFalse(report.fix_plan.applied)
         self.assertFalse(report.unit_tests.applied)
         self.assertEqual(original_content, source_file.read_text(encoding="utf-8"))
-        self.assertFalse((self.project_path / "tests" / "test_testguard_generated.py").exists())
+        self.assertFalse((self.project_path / "tests" / "test_software_engineer_generated.py").exists())
 
     def test_report_dict_contains_combined_summary(self) -> None:
         report = run_software_engineer_agent(self.project_path)

@@ -1,4 +1,4 @@
-import shutil
+﻿import shutil
 import tempfile
 import unittest
 from pathlib import Path
@@ -20,7 +20,7 @@ class UnitTestWriterAgentTest(unittest.TestCase):
     def test_generates_missing_unit_tests_without_applying(self) -> None:
         scan = scan_repository(self.project_path)
         report = generate_missing_unit_tests(self.project_path, scan, apply_changes=False)
-        target_file = self.project_path / "tests" / "test_testguard_generated.py"
+        target_file = self.project_path / "tests" / "test_software_engineer_generated.py"
 
         self.assertFalse(report.applied)
         self.assertFalse(target_file.exists())

@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 import tempfile
 from dataclasses import dataclass
@@ -32,7 +32,7 @@ def run_pipeline(
     project_path: str | Path,
     timeout_seconds: int = 30,
     executor: str = "local",
-    docker_image: str = "testguard-python:latest",
+    docker_image: str = "software-engineer-agent-python:latest",
     generate_tests: bool = False,
 ) -> PipelineReport:
     scan = scan_repository(project_path)
@@ -47,7 +47,7 @@ def run_pipeline(
         security_check = check_generated_test_code(generated_suite.content)
         if not security_check.passed:
             raise ValueError("Generated tests failed security check.")
-        with tempfile.TemporaryDirectory(prefix="testguard-") as temp_dir:
+        with tempfile.TemporaryDirectory(prefix="software-engineer-agent-") as temp_dir:
             execution_project = copy_project_with_generated_tests(project_path, temp_dir, generated_suite)
             execution = _run_executor(
                 execution_project,
@@ -104,7 +104,7 @@ def _run_executor(
 def format_report(report: PipelineReport) -> str:
     status = "PASSED" if report.execution.passed else "FAILED"
     lines = [
-        "[TestGuard Agent MVP]",
+        "[Software Engineer Agent Auxiliary Test Pipeline]",
         "",
         f"Project: {report.scan.project_path}",
         f"Language: {report.scan.language}",

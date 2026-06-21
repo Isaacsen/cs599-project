@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 import ast
 import re
@@ -61,7 +61,7 @@ def fix_repository(
 
 def format_fix_plan(plan: FixPlan) -> str:
     lines = [
-        "[TestGuard Bug Fix]",
+        "[Software Engineer Agent Bug Fix]",
         "",
         f"Project: {plan.project_path}",
         f"Applied: {plan.applied}",
@@ -369,7 +369,7 @@ def _call_name(node: ast.Call) -> str:
 
 def _env_name_for(name: str) -> str:
     parts = re.sub(r"[^A-Za-z0-9]+", "_", name).upper().strip("_")
-    return parts or "TESTGUARD_SECRET"
+    return parts or "SOFTWARE_ENGINEER_AGENT_SECRET"
 
 
 def _indent_of(line: str) -> str:

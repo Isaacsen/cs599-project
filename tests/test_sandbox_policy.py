@@ -1,4 +1,4 @@
-from pathlib import Path
+﻿from pathlib import Path
 import unittest
 
 from src.sandbox.docker_executor import _build_docker_command
@@ -10,11 +10,11 @@ class DockerSandboxCommandTest(unittest.TestCase):
         command = _build_docker_command(
             Path("examples/sample_python_project").resolve(),
             SandboxPolicy(timeout_seconds=10),
-            container_name="testguard-test",
+            container_name="software-engineer-agent-test",
         )
         joined = " ".join(command)
 
-        self.assertIn("--name testguard-test", joined)
+        self.assertIn("--name software-engineer-agent-test", joined)
         self.assertIn("--network none", joined)
         self.assertIn("--read-only", command)
         self.assertIn("--cap-drop ALL", joined)

@@ -1,4 +1,4 @@
-import json
+﻿import json
 import shutil
 import tempfile
 import unittest
@@ -28,7 +28,7 @@ def test_risky_module_divide_llm():
 ```"""
 
 
-def _fake_llm_generation(project_path, scan, apply_changes=False, test_file_path="tests/test_testguard_llm_generated.py", max_functions=8):
+def _fake_llm_generation(project_path, scan, apply_changes=False, test_file_path="tests/test_software_engineer_llm_generated.py", max_functions=8):
     root = Path(project_path).resolve()
     test_plan = plan_tests(root, scan, max_functions=max_functions)
     prompt = build_test_generation_prompt(root, test_plan)
@@ -79,7 +79,7 @@ class SoftwareEngineerGraphTest(unittest.TestCase):
         self.assertEqual(6, result.fix_edit_count)
         self.assertEqual(3, result.generated_unit_test_count)
         self.assertEqual(original_content, source_file.read_text(encoding="utf-8"))
-        self.assertFalse((self.project_path / "tests" / "test_testguard_generated.py").exists())
+        self.assertFalse((self.project_path / "tests" / "test_software_engineer_generated.py").exists())
 
     def test_runs_llm_branch_with_injected_generation(self) -> None:
         with patch(

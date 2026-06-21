@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
@@ -100,11 +100,11 @@ def run_software_engineer_graph(
     use_llm_tests: bool = False,
     run_sandbox: bool = False,
     sandbox_executor: str = "docker",
-    docker_image: str = "testguard-python:latest",
+    docker_image: str = "software-engineer-agent-python:latest",
     timeout_seconds: int = 30,
     repair_iterations: int = 1,
-    test_file_path: str | Path = "tests/test_testguard_generated.py",
-    llm_test_file_path: str | Path = "tests/test_testguard_llm_generated.py",
+    test_file_path: str | Path = "tests/test_software_engineer_generated.py",
+    llm_test_file_path: str | Path = "tests/test_software_engineer_llm_generated.py",
     max_functions: int = 8,
 ) -> SoftwareEngineerGraphResult:
     initial_state: SoftwareEngineerGraphState = {
@@ -237,7 +237,7 @@ def unit_tests_node(state: SoftwareEngineerGraphState) -> SoftwareEngineerGraphS
         state["project_path"],
         scan,
         apply_changes=state.get("apply_tests", False),
-        test_file_path=state.get("test_file_path", "tests/test_testguard_generated.py"),
+        test_file_path=state.get("test_file_path", "tests/test_software_engineer_generated.py"),
         max_functions=state.get("max_functions", 8),
     )
     return {
@@ -251,7 +251,7 @@ def llm_tests_node(state: SoftwareEngineerGraphState) -> SoftwareEngineerGraphSt
         state["project_path"],
         state["scan"],
         apply_changes=state.get("apply_tests", False),
-        test_file_path=state.get("llm_test_file_path", "tests/test_testguard_llm_generated.py"),
+        test_file_path=state.get("llm_test_file_path", "tests/test_software_engineer_llm_generated.py"),
         max_functions=state.get("max_functions", 8),
     )
     return {
@@ -266,7 +266,7 @@ def sandbox_validate_node(state: SoftwareEngineerGraphState) -> SoftwareEngineer
         unit_tests=state.get("unit_tests"),
         llm_tests=state.get("llm_tests"),
         executor=state.get("sandbox_executor", "docker"),
-        docker_image=state.get("docker_image", "testguard-python:latest"),
+        docker_image=state.get("docker_image", "software-engineer-agent-python:latest"),
         timeout_seconds=state.get("timeout_seconds", 30),
     )
     return {
@@ -310,7 +310,7 @@ def finish_node(state: SoftwareEngineerGraphState) -> SoftwareEngineerGraphState
 def format_software_engineer_graph_result(result: SoftwareEngineerGraphResult) -> str:
     state = result.state
     lines = [
-        "[TestGuard Software Engineer LangGraph]",
+        "[Software Engineer Agent LangGraph]",
         "",
         "Run Summary",
         f"  Project: {result.project_path}",
@@ -452,12 +452,6 @@ def _route_after_generated_tests(state: SoftwareEngineerGraphState) -> str:
     if state.get("run_sandbox", False):
         return "sandbox_validate"
     return "coverage_feedback"
-
-
-def _route_after_llm_tests(state: SoftwareEngineerGraphState) -> str:
-    if state.get("run_sandbox", False):
-        return "sandbox_validate"
-    return "finish"
 
 
 def _run_fallback_graph(initial_state: SoftwareEngineerGraphState) -> SoftwareEngineerGraphState:

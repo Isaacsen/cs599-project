@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 import argparse
 import sys
@@ -14,7 +14,7 @@ from src.workflow.software_engineer_graph import (
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(description="Run TestGuard software engineer LangGraph workflow.")
+    parser = argparse.ArgumentParser(description="Run Software Engineer Agent software engineer LangGraph workflow.")
     parser.add_argument("project_path", help="Path to the Python project to inspect.")
     parser.add_argument(
         "--output",
@@ -59,7 +59,7 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--docker-image",
-        default="testguard-python:latest",
+        default="software-engineer-agent-python:latest",
         help="Docker image used by sandbox validation.",
     )
     parser.add_argument(
@@ -76,12 +76,12 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--test-file",
-        default="tests/test_testguard_generated.py",
+        default="tests/test_software_engineer_generated.py",
         help="Project-relative path for generated unit tests when --apply-tests is enabled.",
     )
     parser.add_argument(
         "--llm-test-file",
-        default="tests/test_testguard_llm_generated.py",
+        default="tests/test_software_engineer_llm_generated.py",
         help="Project-relative path for generated LLM tests when --apply-tests is enabled.",
     )
     parser.add_argument(

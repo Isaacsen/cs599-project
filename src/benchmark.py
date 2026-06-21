@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 import argparse
 import sys
@@ -13,7 +13,7 @@ from src.evaluation.benchmark import (
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(description="Run TestGuard benchmark cases.")
+    parser = argparse.ArgumentParser(description="Run Software Engineer Agent benchmark cases.")
     parser.add_argument(
         "--case",
         action="append",
@@ -34,7 +34,7 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--docker-image",
-        default="testguard-python:latest",
+        default="software-engineer-agent-python:latest",
         help="Docker image used when --executor docker is selected.",
     )
     parser.add_argument(

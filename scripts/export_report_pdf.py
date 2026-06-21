@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 import re
 from pathlib import Path
@@ -28,6 +28,8 @@ FONT_PATH = Path("C:/Windows/Fonts/NotoSansSC-VF.ttf")
 
 
 class BookmarkParagraph(Paragraph):
+    last_outline_level = -1
+
     def __init__(self, text: str, style: ParagraphStyle, key: str, level: int) -> None:
         super().__init__(text, style)
         self.key = key
@@ -36,12 +38,16 @@ class BookmarkParagraph(Paragraph):
     def draw(self) -> None:
         canvas = self.canv
         canvas.bookmarkPage(self.key)
-        canvas.addOutlineEntry(self.getPlainText(), self.key, level=max(self.level - 1, 0), closed=False)
+        requested_level = max(self.level - 1, 0)
+        outline_level = min(requested_level, BookmarkParagraph.last_outline_level + 1)
+        canvas.addOutlineEntry(self.getPlainText(), self.key, level=outline_level, closed=False)
+        BookmarkParagraph.last_outline_level = outline_level
         super().draw()
 
 
 def main() -> None:
     register_fonts()
+    BookmarkParagraph.last_outline_level = -1
     styles = build_styles()
     story = markdown_to_story(SOURCE.read_text(encoding="utf-8"), styles)
     doc = SimpleDocTemplate(
@@ -52,7 +58,7 @@ def main() -> None:
         topMargin=18 * mm,
         bottomMargin=18 * mm,
         title="CS599 大作业报告",
-        author="TestGuard Agent",
+        author="Software Engineer Agent",
     )
     doc.build(story, onFirstPage=draw_footer, onLaterPages=draw_footer)
     print(OUTPUT)

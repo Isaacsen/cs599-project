@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 import re
 from dataclasses import dataclass
@@ -32,7 +32,7 @@ def generate_missing_unit_tests(
     project_path: str | Path,
     scan: RepositoryScanResult,
     apply_changes: bool = False,
-    test_file_path: str | Path = "tests/test_testguard_generated.py",
+    test_file_path: str | Path = "tests/test_software_engineer_generated.py",
     max_functions: int = 8,
 ) -> UnitTestReport:
     root = Path(project_path).resolve()
@@ -67,7 +67,7 @@ def generate_missing_unit_tests(
 
 def format_unit_test_report(report: UnitTestReport) -> str:
     lines = [
-        "[TestGuard Unit Test Writer]",
+        "[Software Engineer Agent Unit Test Writer]",
         "",
         f"Project: {report.project_path}",
         f"Applied: {report.applied}",

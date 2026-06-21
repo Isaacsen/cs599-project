@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 import argparse
 import sys
@@ -9,7 +9,7 @@ from src.tools.repo_scanner import scan_repository
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(description="Run TestGuard bug fixer agent.")
+    parser = argparse.ArgumentParser(description="Run Software Engineer Agent bug fixer agent.")
     parser.add_argument("project_path", help="Path to the Python project to fix.")
     parser.add_argument(
         "--output",

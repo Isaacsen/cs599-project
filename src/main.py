@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 import argparse
 import sys
@@ -10,7 +10,7 @@ from src.workflow.pipeline import format_report, run_pipeline
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(description="Run TestGuard Agent MVP pipeline.")
+    parser = argparse.ArgumentParser(description="Run the auxiliary Software Engineer Agent test pipeline.")
     parser.add_argument("project_path", help="Path to the Python project to scan and test.")
     parser.add_argument(
         "--timeout",
@@ -26,7 +26,7 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--docker-image",
-        default="testguard-python:latest",
+        default="software-engineer-agent-python:latest",
         help="Docker image used when --executor docker is selected.",
     )
     parser.add_argument(

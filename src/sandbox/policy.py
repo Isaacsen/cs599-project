@@ -1,11 +1,11 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 from dataclasses import dataclass, field
 
 
 @dataclass(frozen=True)
 class SandboxPolicy:
-    image: str = "testguard-python:latest"
+    image: str = "software-engineer-agent-python:latest"
     network_enabled: bool = False
     readonly_source: bool = True
     timeout_seconds: int = 30

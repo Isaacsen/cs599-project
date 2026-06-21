@@ -1,1 +1,1 @@
-"""LLM integration scaffolding for TestGuard Agent."""
+﻿"""LLM integration scaffolding for Software Engineer Agent."""

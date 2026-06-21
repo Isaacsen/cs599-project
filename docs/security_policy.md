@@ -1,4 +1,4 @@
-# Sandbox Security Policy
+﻿# Sandbox Security Policy
 
 ## 目标
 
@@ -22,7 +22,7 @@ Docker 执行器默认采用以下限制：
 ## 执行命令
 
 ```bash
-docker build -f Dockerfile.sandbox -t testguard-python .
+docker build -f Dockerfile.sandbox -t software-engineer-agent-python .
 python -m src.main examples/sample_python_project --executor docker
 ```
 
@@ -37,5 +37,5 @@ python -m src.main examples/sample_python_project --executor docker
 
 ## 超时清理
 
-每次 Docker 执行都会分配唯一容器名。如果宿主侧超时触发，TestGuard 会尝试执行
+每次 Docker 执行都会分配唯一容器名。如果宿主侧超时触发，Software Engineer Agent 会尝试执行
 `docker rm -f <container_name>` 清理仍在运行的容器，避免异常测试任务在 CLI 退出后继续占用资源。

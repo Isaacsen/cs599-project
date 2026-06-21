@@ -1,20 +1,26 @@
-# Architecture Spec: TestGuard Agent
+﻿# Architecture Spec: Software Engineer Agent
 
 ## 1. 架构目标
 
-TestGuard Agent 采用分层架构，将代码理解、测试规划、测试生成、隔离执行、结果分析、代码审查、自动修 Bug、单测生成、软件工程师编排和 LLM 生成解耦。第一阶段实现仓库扫描与本地测试执行，第二阶段加入 Docker 沙箱执行器，第三阶段加入可离线演示的测试规划与生成 Agent，第四阶段加入结果分析与 JSON 运行报告，第五阶段加入 Benchmark 评估，第六阶段加入失败诊断与修复建议，第七阶段显式化生成测试安全检查，第八阶段加入 LLM Prompt 导出，第九阶段加入代码审查 Agent，第十阶段加入自动修 Bug Agent，第十一阶段加入缺失覆盖单测生成 Agent，第十二阶段加入软件工程师 Agent 编排入口，第十三阶段加入 LLM 测试生成 Agent。
+Software Engineer Agent 采用分层架构，将代码理解、代码审查、LLM 语义审查、自动修 Bug、Patch 审查、单测生成、LLM 测试生成、隔离执行、修复循环、覆盖反馈和报告输出解耦。当前主架构已经迁移为基于 LangGraph `StateGraph` 的软件工程师 Agent；早期的测试生成 Pipeline、Benchmark、独立 review/fix/unit_tests/llm_tests CLI 保留为辅助入口和可复现评估工件。
 
 ## 2. 总体流程
 
 ```text
 Repo Scanner
-  -> Test Planning Agent
-  -> Test Generation Agent
-  -> Security Checker
-  -> Sandbox Executor
-  -> Result Analyzer Agent
-  -> Report Generator
+  -> Rule Code Reviewer Agent
+  -> LLM Code Reviewer Agent
+  -> Bug Fixer Agent
+  -> Patch Reviewer Agent
+  -> Unit Test Writer Agent
+  -> LLM Test Generator Agent
+  -> Sandbox Validator Agent
+  -> Repair Loop Agent
+  -> Coverage Feedback Agent
+  -> Software Engineer Report Writer
 ```
+
+推荐演示命令默认启用真实 LLM 节点和 Docker 沙箱节点。CLI 保留独立开关，便于在无模型或无 Docker 的环境下运行精简流。
 
 第一阶段实际流程：
 
@@ -93,26 +99,25 @@ Repo Scanner
   -> Optional Test File Apply
 ```
 
-第十二阶段软件工程师 Agent 流程：
+当前软件工程师 Agent 主流程：
 
 ```text
 Repo Scanner
   -> Code Reviewer Agent
+  -> LLM Code Reviewer Agent
   -> Bug Fixer Agent
+  -> Patch Reviewer Agent
   -> Unit Test Writer Agent
-  -> Software Engineer Report Writer
-```
-
-第十三阶段 LLM 测试生成流程：
-
-```text
-Repo Scanner
-  -> Test Planner Agent
   -> LLM Prompt Builder
   -> OpenAI-compatible LLM Client
   -> Security Checker
-  -> LLM Test Report Writer
+  -> Sandbox Validator Agent
+  -> Repair Loop Agent
+  -> Coverage Feedback Agent
+  -> Software Engineer JSON / Markdown Report
 ```
+
+第十三阶段 LLM 测试生成流程仍可通过 `src.llm_tests` 独立运行，作为主流程中 `llm_tests` 节点的辅助入口。
 
 ## 3. 模块设计
 
@@ -259,8 +264,6 @@ Repo Scanner
 - 聚合通过率、pytest 用例数量、规划测试数量、生成测试数量和总耗时。
 - 写出 Benchmark JSON 报告。
 
-### 3.14 Future Agent Modules
-
 ### 3.14 LLM Prompt Builder
 
 位置：`src/llm/prompt_builder.py`
@@ -270,7 +273,7 @@ Repo Scanner
 - 根据 TestPlan 和源码上下文构造 LLM 测试生成 Prompt。
 - 在 system prompt 中写入安全约束。
 - 控制源码上下文长度，避免 Prompt 过大。
-- 支持后续接入 DashScope、DeepSeek、OpenAI 或 Ollama。
+- 支持接入 DashScope、DeepSeek、OpenAI 或 Ollama。
 
 ### 3.15 LLM Config
 
@@ -337,9 +340,9 @@ Repo Scanner
 
 职责：
 
-- 使用 LangGraph `StateGraph` 编排扫描、代码审查、自动修 Bug 计划、缺失覆盖单测生成和可选 LLM 测试生成。
+- 使用 LangGraph `StateGraph` 编排扫描、规则代码审查、LLM 代码审查、自动修 Bug 计划、Patch 审查、缺失覆盖单测生成、LLM 测试生成、沙箱验证、修复循环和覆盖反馈。
 - 保持默认 dry-run，避免未经确认修改用户项目。
-- 将 `ReviewReport`、`FixPlan`、`UnitTestReport` 和可选 `LLMTestGenerationReport` 汇总为统一报告。
+- 将 `ReviewReport`、`LLMCodeReviewReport`、`FixPlan`、`PatchReviewReport`、`UnitTestReport`、`LLMTestGenerationReport`、`SandboxValidationReport`、`RepairLoopReport` 和 `CoverageFeedbackReport` 汇总为统一报告。
 - 记录 `node_trace`、`graph_runtime` 和 `status`，用于演示 Agent 状态流转。
 - 为课程演示提供一个完整的软件工程师 Agent 入口。
 
@@ -355,16 +358,55 @@ Repo Scanner
 - 使用 Security Checker 校验生成测试。
 - 输出 `LLMTestGenerationReport`，支持 dry-run 和可选写入测试文件。
 
-### 3.22 Future Agent Modules
+### 3.22 LLM Code Reviewer Agent
 
-位置：`src/agents/`
+位置：`src/agents/llm_code_reviewer.py`
 
-当前已实现规则型 Test Generator Agent、LLM Test Generator Agent、Code Reviewer Agent、Bug Fixer Agent、Unit Test Writer Agent 和基于 LangGraph StateGraph 的 Software Engineer Agent。后续计划：
+职责：
 
-- Codebase RAG Agent：增强跨文件依赖理解和上下文检索。
-- Coverage Feedback Agent：根据覆盖率报告反向补齐测试。
-- Patch Validation Agent：对自动修复后的 diff 进行二次验证。
-- Multi-project Benchmark Agent：扩展多项目、多 Bug 类型评估集。
+- 基于仓库扫描结果构造审查 Prompt。
+- 调用真实 OpenAI-compatible LLM Client 进行语义代码审查。
+- 将模型输出归一化为 `LLMCodeReviewReport`，只记录 provider、model 和 API Key 是否存在，不写出密钥明文。
+
+### 3.23 Patch Reviewer Agent
+
+位置：`src/agents/patch_reviewer.py`
+
+职责：
+
+- 消费 `FixPlan`。
+- 检查修复计划是否仍包含高风险模式。
+- 输出 `PatchReviewReport`，为后续沙箱验证和修复循环提供门禁信号。
+
+### 3.24 Sandbox Validator Agent
+
+位置：`src/agents/sandbox_validator.py`
+
+职责：
+
+- 将规则生成测试和 LLM 生成测试写入临时工作区。
+- 调用本地或 Docker 沙箱执行 pytest。
+- 复用结果分析与失败诊断，输出 `SandboxValidationReport`。
+
+### 3.25 Repair Loop Agent
+
+位置：`src/agents/repair_loop.py`
+
+职责：
+
+- 根据 Patch 审查和沙箱验证结果规划下一轮修复动作。
+- 记录迭代预算、下一步状态和建议动作。
+- 当前以计划模式运行，不自动无限写回源码。
+
+### 3.26 Coverage Feedback Agent
+
+位置：`src/agents/coverage_feedback.py`
+
+职责：
+
+- 汇总规则单测与 LLM 单测覆盖的公开函数。
+- 输出覆盖比例、已覆盖函数和缺失函数。
+- 为下一轮测试生成提供反馈。
 
 ## 4. 权限隔离设计
 
@@ -438,13 +480,24 @@ RepositoryScanResult
   -> StateGraph scan node
   -> StateGraph review node
   -> ReviewReport
+  -> StateGraph llm_review node
+  -> LLMCodeReviewReport
   -> StateGraph fix node
   -> FixPlan
+  -> StateGraph patch_review node
+  -> PatchReviewReport
   -> StateGraph unit_tests node
   -> UnitTestReport
-  -> Optional StateGraph llm_tests node
+  -> StateGraph llm_tests node
+  -> LLMTestGenerationReport
+  -> StateGraph sandbox_validate node
+  -> SandboxValidationReport
+  -> StateGraph repair_loop node
+  -> RepairLoopReport
+  -> StateGraph coverage_feedback node
+  -> CoverageFeedbackReport
   -> Node Trace
-  -> Software Engineer JSON Artifact
+  -> Software Engineer JSON / Markdown Artifact
 
 LLM Test Generation Flow:
 
@@ -476,11 +529,16 @@ RepositoryScanResult
 - Bug Fix Plan JSON 工件。
 - Unit Test Writer JSON 工件。
 - Software Engineer JSON 工件。
+- Software Engineer Markdown 工件。
 - LLM Test JSON 工件。
+- LLM 代码审查摘要。
+- Patch 审查结果。
+- 沙箱验证结果。
+- 修复循环计划。
+- 覆盖反馈结果。
 
-后续将扩展为：
+进一步增强方向：
 
-- Agent trace。
-- LLM prompt / response 摘要。
-- 覆盖率数据。
-- Benchmark 数据集评估结果。
+- 更大规模 Benchmark 数据集评估结果。
+- Codebase RAG 检索证据。
+- 更细粒度的容器 seccomp / AppArmor 配置。

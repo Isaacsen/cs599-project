@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
@@ -25,7 +25,7 @@ def build_test_generation_prompt(
     plan_context = _format_plan(test_plan)
 
     system = (
-        "You are TestGuard Agent, an expert Python test generation assistant. "
+        "You are Software Engineer Agent, an expert Python test generation assistant. "
         "Generate safe pytest tests only. Do not use network access, subprocesses, "
         "file system mutation, eval, exec, or hardcoded secrets."
     )

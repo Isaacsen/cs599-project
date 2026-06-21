@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 import shutil
 import subprocess
@@ -21,7 +21,7 @@ def run_pytest_in_docker(
         raise RuntimeError("Docker executable was not found. Install Docker or use --executor local.")
 
     active_policy = policy or SandboxPolicy()
-    container_name = f"testguard-{uuid.uuid4().hex[:12]}"
+    container_name = f"software-engineer-agent-{uuid.uuid4().hex[:12]}"
     command = _build_docker_command(root, active_policy, container_name=container_name)
 
     started_at = time.perf_counter()
@@ -61,7 +61,7 @@ def run_pytest_in_docker(
 def _build_docker_command(
     root: Path,
     policy: SandboxPolicy,
-    container_name: str = "testguard-sandbox",
+    container_name: str = "software-engineer-agent-sandbox",
 ) -> list[str]:
     mount_options = [
         "type=bind",

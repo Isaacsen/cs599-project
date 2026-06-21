@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 import re
 from dataclasses import dataclass
@@ -39,7 +39,7 @@ def generate_llm_pytest_tests(
     project_path: str | Path,
     scan: RepositoryScanResult,
     apply_changes: bool = False,
-    test_file_path: str | Path = "tests/test_testguard_llm_generated.py",
+    test_file_path: str | Path = "tests/test_software_engineer_llm_generated.py",
     max_functions: int = 8,
     client: LLMClient | None = None,
     config: LLMConfig | None = None,
@@ -116,7 +116,7 @@ def generate_llm_pytest_tests(
 
 def format_llm_test_generation_report(report: LLMTestGenerationReport) -> str:
     lines = [
-        "[TestGuard LLM Test Generator]",
+        "[Software Engineer Agent LLM Test Generator]",
         "",
         f"Project: {report.project_path}",
         f"Status: {report.status}",

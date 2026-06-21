@@ -1,4 +1,4 @@
-import json
+﻿import json
 import tempfile
 import unittest
 from pathlib import Path
@@ -70,7 +70,7 @@ class ResultAnalyzerTest(unittest.TestCase):
                 scan_repository("examples/sample_python_project"),
             ),
             generated_suite=GeneratedTestSuite(
-                test_file_name="test_testguard_generated.py",
+                test_file_name="test_software_engineer_generated.py",
                 content="def test_sample():\n    assert True\n",
                 covered_functions=["calculator.add", "calculator.divide"],
             ),

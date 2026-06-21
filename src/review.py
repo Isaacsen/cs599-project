@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 import argparse
 import sys
@@ -9,7 +9,7 @@ from src.tools.review_writer import write_review_report
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(description="Run TestGuard code review agent.")
+    parser = argparse.ArgumentParser(description="Run Software Engineer Agent code review agent.")
     parser.add_argument("project_path", help="Path to the Python project to review.")
     parser.add_argument(
         "--output",

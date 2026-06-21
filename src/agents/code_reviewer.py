@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 import ast
 import re
@@ -64,7 +64,7 @@ def review_repository(project_path: str | Path, scan: RepositoryScanResult) -> R
 
 def format_review_report(report: ReviewReport) -> str:
     lines = [
-        "[TestGuard Code Review]",
+        "[Software Engineer Agent Code Review]",
         "",
         f"Project: {report.project_path}",
         f"Findings: {report.finding_count}",

@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 import json
 import re
@@ -81,7 +81,7 @@ def _build_review_prompt(root: Path, scan: RepositoryScanResult, max_files: int)
     )
     return LLMTestPrompt(
         system=(
-            "You are TestGuard Code Review Agent. Produce concise, actionable findings. "
+            "You are Software Engineer Agent Code Review Agent. Produce concise, actionable findings. "
             "Do not include secrets. Return valid JSON only."
         ),
         user=user,

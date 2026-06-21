@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 import argparse
 import sys
@@ -9,7 +9,7 @@ from src.tools.unit_test_writer import write_unit_test_report
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(description="Run TestGuard unit test writer agent.")
+    parser = argparse.ArgumentParser(description="Run Software Engineer Agent unit test writer agent.")
     parser.add_argument("project_path", help="Path to the Python project to analyze.")
     parser.add_argument(
         "--output",
@@ -18,7 +18,7 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--test-file",
-        default="tests/test_testguard_generated.py",
+        default="tests/test_software_engineer_generated.py",
         help="Project-relative path to write generated pytest tests when --apply is enabled.",
     )
     parser.add_argument(

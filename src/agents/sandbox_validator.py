@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 import shutil
 import tempfile
@@ -37,11 +37,11 @@ def validate_generated_tests_in_sandbox(
     unit_tests: UnitTestReport | None = None,
     llm_tests: LLMTestGenerationReport | None = None,
     executor: str = "docker",
-    docker_image: str = "testguard-python:latest",
+    docker_image: str = "software-engineer-agent-python:latest",
     timeout_seconds: int = 30,
 ) -> SandboxValidationReport:
     root = Path(project_path).resolve()
-    with tempfile.TemporaryDirectory(prefix="testguard-agent-") as temp_dir:
+    with tempfile.TemporaryDirectory(prefix="software-engineer-agent-agent-") as temp_dir:
         workspace = _copy_project(root, temp_dir)
         generated_files = _write_generated_tests(workspace, unit_tests, llm_tests)
         execution = _run_executor(workspace, executor, docker_image, timeout_seconds)

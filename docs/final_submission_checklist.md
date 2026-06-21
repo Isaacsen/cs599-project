@@ -4,15 +4,15 @@
 
 - [x] Direction: Agentic AI native development.
 - [x] Topic: Software Engineer Agent with permission-isolated execution.
-- [x] Core workflow: code review, auto bug-fix planning, unit-test generation, LLM test generation, sandboxed validation.
+- [x] Core workflow: code review, LLM code review, auto bug-fix planning, patch review, unit-test generation, LLM test generation, sandboxed validation, repair-loop planning, and coverage feedback.
 
 ## Course Requirement Mapping
 
 - [x] SDD: `docs/specs/product_spec.md`, `docs/specs/architecture_spec.md`, `docs/specs/api_spec.md`.
 - [x] Tool use / Function Calling: repo scanner, security checker, sandbox executor, report writers, LLM client.
-- [x] State management and multi-step reasoning: LangGraph `StateGraph` coordinates scan, review, fix, unit-test, and optional LLM-test nodes.
-- [x] Multi-agent collaboration: Code Reviewer, Bug Fixer, Unit Test Writer, LLM Test Generator.
-- [x] Observability and evaluation: JSON artifacts and benchmark report.
+- [x] State management and multi-step reasoning: LangGraph `StateGraph` coordinates scan, review, llm_review, fix, patch_review, unit_tests, llm_tests, sandbox_validate, repair_loop, coverage_feedback, and finish nodes.
+- [x] Multi-agent collaboration: Code Reviewer, LLM Code Reviewer, Bug Fixer, Patch Reviewer, Unit Test Writer, LLM Test Generator, Sandbox Validator, Repair Loop, and Coverage Feedback.
+- [x] Observability and evaluation: JSON artifacts, Markdown software engineer report, and benchmark report.
 - [x] Permission isolation: Docker sandbox, dry-run apply gates, generated-code security checker.
 
 ## Final Verification Commands
@@ -20,7 +20,7 @@
 ```bash
 python -m unittest discover -s tests
 python -m compileall src tests examples
-python -m src.engineer examples/review_target --use-llm-review --use-llm-tests --run-sandbox --sandbox-executor docker --output docs/runs/software_engineer.json
+python -m src.engineer examples/review_target --use-llm-review --use-llm-tests --run-sandbox --sandbox-executor docker --output docs/runs/software_engineer.json --output-md docs/runs/software_engineer.md
 python -m src.llm_tests examples/sample_python_project --output docs/runs/llm_tests.json
 ```
 
@@ -38,6 +38,9 @@ scripts/final_verify.ps1
 - [x] `docs/artifacts.md`
 - [x] `docs/CS599_大作业报告.md`
 - [x] `docs/CS599_大作业报告.pdf`
+- [x] `docs/runs/software_engineer.json`
+- [x] `docs/runs/software_engineer.md`
+- [x] `docs/runs/software_engineer_graph.json`
 - [x] `docs/runs/sample_run.json`
 - [x] `docs/runs/benchmark.json`
 - [x] `docs/runs/llm_prompt.json`
@@ -45,8 +48,6 @@ scripts/final_verify.ps1
 - [x] `docs/runs/review.json`
 - [x] `docs/runs/fix_plan.json`
 - [x] `docs/runs/unit_tests.json`
-- [x] `docs/runs/software_engineer.json`
-- [x] `docs/runs/software_engineer_graph.json`
 
 ## Final Manual Items
 

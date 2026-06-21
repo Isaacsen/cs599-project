@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 import json
 from dataclasses import asdict
@@ -75,7 +75,7 @@ def write_software_engineer_markdown(result: SoftwareEngineerGraphResult, output
 def format_software_engineer_markdown(result: SoftwareEngineerGraphResult) -> str:
     state = result.state
     lines = [
-        "# TestGuard Software Engineer Agent Report",
+        "# Software Engineer Agent Report",
         "",
         "## Summary",
         "",

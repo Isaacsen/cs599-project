@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 import json
 from dataclasses import asdict, dataclass
@@ -51,7 +51,7 @@ def run_benchmark(
     cases: list[BenchmarkCase] | None = None,
     timeout_seconds: int = 30,
     executor: str = "local",
-    docker_image: str = "testguard-python:latest",
+    docker_image: str = "software-engineer-agent-python:latest",
 ) -> tuple[BenchmarkSummary, list[BenchmarkResult]]:
     active_cases = cases or DEFAULT_BENCHMARK_CASES
     results: list[BenchmarkResult] = []
@@ -129,7 +129,7 @@ def write_benchmark_report(
 def format_benchmark_summary(summary: BenchmarkSummary) -> str:
     return "\n".join(
         [
-            "[TestGuard Benchmark]",
+            "[Software Engineer Agent Benchmark]",
             "",
             f"Total Cases: {summary.total_cases}",
             f"Passed Cases: {summary.passed_cases}",
