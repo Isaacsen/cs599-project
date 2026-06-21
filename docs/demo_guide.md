@@ -169,7 +169,6 @@ python -m src.llm_tests examples/sample_python_project --output docs/runs/llm_te
 - `docs/runs/fix_plan.json`
 - `docs/runs/unit_tests.json`
 - `docs/runs/software_engineer.json`
-- `docs/runs/software_engineer_graph.json`
 
 这些文件记录了完整 Demo 的可复现输出。
 

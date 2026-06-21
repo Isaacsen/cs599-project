@@ -335,7 +335,6 @@ Repo Scanner
 
 - `src/workflow/software_engineer_graph.py`
 - `src/engineer.py`
-- `src/engineer_graph.py`
 - `src/tools/software_engineer_graph_writer.py`
 
 职责：

@@ -40,7 +40,6 @@ scripts/final_verify.ps1
 - [x] `docs/CS599_大作业报告.pdf`
 - [x] `docs/runs/software_engineer.json`
 - [x] `docs/runs/software_engineer.md`
-- [x] `docs/runs/software_engineer_graph.json`
 - [x] `docs/runs/sample_run.json`
 - [x] `docs/runs/benchmark.json`
 - [x] `docs/runs/llm_prompt.json`

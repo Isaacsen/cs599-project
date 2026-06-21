@@ -18,43 +18,25 @@ Software Engineer Agent 当前定位为 **面向 Python 项目的软件工程师
 
 ```mermaid
 graph TD
-    USER["User or Demo"] --> CLI["CLI Entry"]
-    CLI --> ENGINEER["src.engineer"]
-    CLI --> AUXCLI["Auxiliary CLIs"]
-
-    ENGINEER --> GRAPH["LangGraph StateGraph"]
-    GRAPH --> SCAN["Repo Scanner"]
-    SCAN --> REVIEW["Rule Code Reviewer"]
-    REVIEW --> LLMREVIEW["LLM Code Reviewer"]
-    LLMREVIEW --> FIX["Bug Fixer"]
-    FIX --> PATCH["Patch Reviewer"]
-    PATCH --> UNIT["Unit Test Writer"]
-    UNIT --> LLMTEST["LLM Test Generator"]
-    LLMTEST --> VALIDATE["Sandbox Validator"]
-    VALIDATE --> REPAIR["Repair Loop"]
-    REPAIR --> COVERAGE["Coverage Feedback"]
-    COVERAGE --> REPORT["Report Writer"]
-
-    UNIT --> PLANNER["Test Planner"]
-    UNIT --> RULEGEN["Rule Test Generator"]
-    UNIT --> SECURITY["Security Checker"]
-    LLMTEST --> PROMPT["LLM Prompt Builder"]
-    LLMTEST --> LLMCLIENT["OpenAI Compatible LLM Client"]
-    LLMTEST --> SECURITY
-
-    VALIDATE --> WORKSPACE["Temporary Workspace"]
-    VALIDATE --> EXECUTOR["Sandbox Executor"]
-    EXECUTOR --> LOCAL["Local Executor"]
-    EXECUTOR --> DOCKER["Docker Executor"]
-    DOCKER --> READONLY["Read Only Source Mount"]
-    DOCKER --> NONETWORK["Network Disabled"]
-    DOCKER --> LIMITS["CPU Memory PID Timeout Limits"]
-    DOCKER --> PRIVILEGE["No New Privileges"]
-
-    REPORT --> JSONREPORT["software_engineer json"]
-    REPORT --> MDREPORT["software_engineer markdown"]
-    AUXCLI --> AUXREPORT["Auxiliary JSON Reports"]
+    START["START"] --> SCAN["scan"]
+    SCAN --> REVIEW["review"]
+    REVIEW -.-> LLM_REVIEW["llm_review"]
+    REVIEW -.-> FIX["fix"]
+    LLM_REVIEW --> FIX
+    FIX --> PATCH_REVIEW["patch_review"]
+    PATCH_REVIEW --> UNIT_TESTS["unit_tests"]
+    UNIT_TESTS -.-> LLM_TESTS["llm_tests"]
+    UNIT_TESTS -.-> SANDBOX_VALIDATE["sandbox_validate"]
+    UNIT_TESTS -.-> COVERAGE_FEEDBACK["coverage_feedback"]
+    LLM_TESTS -.-> SANDBOX_VALIDATE
+    LLM_TESTS -.-> COVERAGE_FEEDBACK
+    SANDBOX_VALIDATE --> REPAIR_LOOP["repair_loop"]
+    REPAIR_LOOP --> COVERAGE_FEEDBACK
+    COVERAGE_FEEDBACK --> FINISH["finish"]
+    FINISH --> END["END"]
 ```
+
+该图以 `docs/runs/software_engineer_agent_flow.png` 中由 LangGraph 导出的真实状态图为准。`unit_tests` 内部会调用 Test Planner、规则 Test Generator 和 Security Checker；`llm_tests` 内部会调用 Prompt Builder、LLM Client 和 Security Checker；`sandbox_validate` 内部会调用临时工作区和沙箱执行器。
 
 ## 3. 分层设计
 
@@ -63,7 +45,6 @@ graph TD
 面向课程 Demo 和评审者，提供可重复运行的命令：
 
 - `src.engineer`：当前主入口，运行完整 LangGraph 软件工程师 Agent。
-- `src.engineer_graph`：显式 LangGraph 软件工程师 Agent 入口，便于演示和兼容。
 - `src.main`：辅助的传统测试生成、沙箱执行、结果分析闭环。
 - `src.review`：代码审查。
 - `src.fix`：自动修 Bug 计划。
@@ -76,21 +57,29 @@ graph TD
 核心是基于 LangGraph `StateGraph` 的 `Software Engineer Agent`：
 
 ```text
-scan
+START
+  -> scan
   -> review
-  -> llm_review
+  -> llm_review / fix
   -> fix
   -> patch_review
   -> unit_tests
-  -> llm_tests
-  -> sandbox_validate
+  -> llm_tests / sandbox_validate / coverage_feedback
+  -> sandbox_validate / coverage_feedback
   -> repair_loop
   -> coverage_feedback
   -> finish
-  -> SoftwareEngineerGraphResult
+  -> END
 ```
 
-以上是项目当前推荐的完整演示流。CLI 仍保留 `--use-llm-review`、`--use-llm-tests` 和 `--run-sandbox` 开关，便于在无模型额度或无 Docker 的环境中运行精简流；课程验收与最终验证默认启用真实 LLM 节点和 Docker 沙箱节点。
+真实状态图以 `docs/runs/software_engineer_agent_flow.png` 的 LangGraph 导出结果为准。关键条件分支如下：
+
+- `review` 后：启用 `--use-llm-review` 时进入 `llm_review`，否则直接进入 `fix`。
+- `unit_tests` 后：启用 `--use-llm-tests` 时进入 `llm_tests`；未启用时根据 `--run-sandbox` 进入 `sandbox_validate` 或 `coverage_feedback`。
+- `llm_tests` 后：启用 `--run-sandbox` 时进入 `sandbox_validate`，否则进入 `coverage_feedback`。
+- `sandbox_validate` 后固定进入 `repair_loop`，再进入 `coverage_feedback`。
+
+项目推荐的完整演示流会同时启用 `--use-llm-review`、`--use-llm-tests` 和 `--run-sandbox`，因此实际运行路径为 `scan -> review -> llm_review -> fix -> patch_review -> unit_tests -> llm_tests -> sandbox_validate -> repair_loop -> coverage_feedback -> finish`。CLI 保留这些开关，便于在无模型额度或无 Docker 的环境中运行精简流。
 
 该层体现 Agentic AI 的多步骤推理与状态管理。每个节点都消费并返回结构化状态，最终合并为统一 JSON / Markdown 报告，并记录 `node_trace`、`status` 和 `graph_runtime`。
 
@@ -137,7 +126,6 @@ graph LR
 - `fix_plan.json`
 - `unit_tests.json`
 - `software_engineer.json`
-- `software_engineer_graph.json`
 - `software_engineer.md`
 
 这些工件支持课程报告中的测试评估、Demo 兜底和可复现审计。
