@@ -8,6 +8,7 @@ from urllib import error, request
 
 from src.llm.config import LLMConfig
 from src.llm.prompt_builder import LLMTestPrompt
+from src.llm.streaming import emit_llm_token, has_llm_token_sink
 
 
 class LLMClient(Protocol):
@@ -30,6 +31,7 @@ class OpenAICompatibleLLMClient:
         if not self.config.api_key_set and self.config.provider != "ollama":
             raise ValueError(f"Missing API key in {self.config.api_key_env}")
         stream_stdout = os.getenv("LLM_STREAM_STDOUT", "").strip() == "1"
+        stream_tokens = stream_stdout or has_llm_token_sink()
         payload = {
             "model": self.config.model,
             "messages": [
@@ -37,7 +39,7 @@ class OpenAICompatibleLLMClient:
                 {"role": "user", "content": prompt.user},
             ],
             "temperature": 0.2,
-            "stream": stream_stdout,
+            "stream": stream_tokens,
         }
         data = json.dumps(payload).encode("utf-8")
         headers = {"Content-Type": "application/json"}
@@ -54,8 +56,8 @@ class OpenAICompatibleLLMClient:
         for attempt in range(self.max_retries + 1):
             try:
                 with request.urlopen(req, timeout=self.timeout_seconds) as response:
-                    if stream_stdout:
-                        return _read_streaming_content(response)
+                    if stream_tokens:
+                        return _read_streaming_content(response, emit_stdout=stream_stdout)
                     body = response.read().decode("utf-8")
                 return _extract_chat_content(json.loads(body))
             except (error.URLError, TimeoutError) as exc:
@@ -86,9 +88,10 @@ def _extract_chat_content(payload: dict) -> str:
     return content
 
 
-def _read_streaming_content(response: object) -> str:
+def _read_streaming_content(response: object, emit_stdout: bool = False) -> str:
     chunks: list[str] = []
-    print("[llm-stream] ", end="", flush=True)
+    if emit_stdout:
+        print("[llm-stream] ", end="", flush=True)
     for raw_line in response:
         line = raw_line.decode("utf-8", errors="replace").strip()
         if not line or not line.startswith("data:"):
@@ -104,8 +107,11 @@ def _read_streaming_content(response: object) -> str:
         content = delta.get("content") or ""
         if content:
             chunks.append(content)
-            print(content, end="", flush=True)
-    print("", flush=True)
+            emit_llm_token(content)
+            if emit_stdout:
+                print(content, end="", flush=True)
+    if emit_stdout:
+        print("", flush=True)
     result = "".join(chunks)
     if not result.strip():
         raise ValueError("LLM streaming response did not include message content.")

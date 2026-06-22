@@ -35,6 +35,7 @@ cs599-project/
 │   ├── evaluation/    # Benchmark 汇总
 │   ├── llm/           # LLM 配置、Prompt 构建和 OpenAI-compatible client
 │   ├── sandbox/       # Local / Docker 执行器与隔离策略
+│   ├── server/        # FastAPI 前端服务与 SSE 运行管理
 │   ├── tools/         # 报告写出、临时工作区与兼容导出
 │   └── workflow/      # LangGraph 主流程
 ├── tests/
@@ -114,31 +115,44 @@ python -m src.engineer examples/review_target --no-stream --no-llm-token-stream
 
 ## 前端可视化
 
-项目提供一个无构建依赖的静态 Web Viewer，用于展示 Agent 状态图、节点 Timeline 和每轮中间输出。
+项目提供一个 FastAPI Web Viewer，用于在浏览器中启动 Agent，并实时展示 Agent 状态图、节点 Timeline 和每轮中间输出。
 
-先运行一次 Agent 生成报告和事件日志：
-
-```bash
-python -m src.engineer examples/review_target --run-sandbox --sandbox-executor local
-```
-
-启动静态服务器：
+启动服务：
 
 ```bash
-python -m http.server 8000
+python -m src.server.app
 ```
 
 浏览器打开：
 
 ```text
-http://localhost:8000/web/agent-viewer/
+http://localhost:8000/viewer/
 ```
 
-Viewer 会读取：
+在页面中填写项目路径并点击 **Start Run**，后端会启动完整 LangGraph Agent，浏览器通过 SSE 实时接收：
 
-- `docs/runs/software_engineer.json`
-- `docs/runs/software_engineer_events.jsonl`
-- `docs/runs/software_engineer.md`
+```text
+node_start / node_end / llm_token / report / cancelled / run_end
+```
+
+点击 **Stop** 可以请求终止当前运行。终止是协作式的：如果某个 LLM 或沙箱节点正在执行，系统会等待当前节点返回或在下一个节点边界停止，避免强制杀线程导致工作区状态损坏。
+
+“每轮详细输出”会展开每个 Agent 的结构化输出，包括 Repo Scan、LLM Review、Fix Plan、Code Fix、Test Writer、Sandbox、Repair Loop 和 Coverage，而不是只显示 completed/not_run。LLM 节点运行时还会通过 `llm_token` 事件实时追加 token 到 `llm_token_stream` 字段。
+
+主要后端端点：
+
+- `POST /api/runs`：启动一次 Agent 运行。
+- `GET /api/runs/{run_id}/events`：SSE 实时事件流。
+- `GET /api/runs/{run_id}/report`：读取本次运行 JSON 报告。
+- `GET /api/runs/{run_id}/markdown`：读取本次运行 Markdown 报告。
+
+每次 Web 运行会写入：
+
+```text
+docs/runs/web/<run_id>/software_engineer.json
+docs/runs/web/<run_id>/software_engineer.md
+docs/runs/web/<run_id>/events.jsonl
+```
 
 ## 常用参数
 
@@ -219,7 +233,8 @@ scripts/final_verify.ps1
 - `docs/runs/software_engineer_events.jsonl`：前端可视化读取的结构化 Agent 事件日志。
 - `docs/runs/software_engineer_agent_flow.png`：LangGraph Agent 流程图。
 - `docs/runs/benchmark.json`：Benchmark 输出。
-- `web/agent-viewer/`：展示状态图、Timeline 和每轮中间输出的静态前端。
+- `src/server/`：FastAPI + SSE 服务端。
+- `web/agent-viewer/`：展示状态图、Timeline 和每轮中间输出的前端。
 
 ## 项目状态
 

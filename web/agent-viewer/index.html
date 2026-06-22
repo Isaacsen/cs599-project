@@ -10,14 +10,50 @@
     <header class="topbar">
       <div>
         <h1>Software Engineer Agent</h1>
-        <p id="run-summary">Loading latest run...</p>
+        <p id="run-summary">Ready to start an Agent run.</p>
       </div>
       <div class="actions">
-        <button id="reload" type="button">Refresh</button>
-        <a class="button" href="/docs/runs/software_engineer.md">Markdown Report</a>
-        <a class="button" href="/docs/runs/software_engineer.json">JSON Report</a>
+        <button id="reload" type="button">Refresh Latest</button>
+        <a class="button" id="markdown-link" href="/docs/runs/software_engineer.md">Markdown Report</a>
+        <a class="button" id="json-link" href="/docs/runs/software_engineer.json">JSON Report</a>
       </div>
     </header>
+
+    <section class="control-panel">
+      <label>
+        Project
+        <input id="project-path" value="examples/review_target" />
+      </label>
+      <label>
+        Sandbox
+        <select id="sandbox-executor">
+          <option value="local">local</option>
+          <option value="docker">docker</option>
+        </select>
+      </label>
+      <label>
+        Timeout
+        <input id="timeout-seconds" type="number" min="1" max="600" value="30" />
+      </label>
+      <label>
+        LLM Timeout
+        <input id="llm-timeout" type="number" min="1" max="600" value="90" />
+      </label>
+      <label class="check">
+        <input id="run-sandbox" type="checkbox" checked />
+        Run sandbox
+      </label>
+      <label class="check">
+        <input id="apply-fixes" type="checkbox" />
+        Apply fixes
+      </label>
+      <label class="check">
+        <input id="apply-tests" type="checkbox" />
+        Apply tests
+      </label>
+      <button id="start-run" type="button">Start Run</button>
+      <button id="stop-run" type="button" disabled>Stop</button>
+    </section>
 
     <main class="layout">
       <section class="panel graph-panel">
@@ -38,7 +74,7 @@
 
       <section class="panel rounds-panel">
         <div class="panel-title">
-          <h2>每轮中间输出</h2>
+          <h2>每轮详细输出</h2>
           <span id="round-count">0 rounds</span>
         </div>
         <div id="rounds" class="rounds"></div>

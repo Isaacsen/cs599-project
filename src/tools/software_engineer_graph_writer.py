@@ -165,6 +165,10 @@ def _llm_review_to_dict(report: Any) -> dict[str, Any]:
     }
 
 
+def llm_review_to_dict(report: Any) -> dict[str, Any]:
+    return _llm_review_to_dict(report)
+
+
 def _llm_fix_to_dict(report: LLMCodeFixReport) -> dict[str, Any]:
     return {
         "project_path": report.project_path,
@@ -192,6 +196,10 @@ def _llm_fix_to_dict(report: LLMCodeFixReport) -> dict[str, Any]:
     }
 
 
+def llm_fix_to_dict(report: LLMCodeFixReport) -> dict[str, Any]:
+    return _llm_fix_to_dict(report)
+
+
 def _llm_fix_plan_to_dict(plan: LLMFixPlan) -> dict[str, Any]:
     return {
         "status": plan.status,
@@ -215,6 +223,10 @@ def _llm_fix_plan_to_dict(plan: LLMFixPlan) -> dict[str, Any]:
             for target in plan.targets
         ],
     }
+
+
+def llm_fix_plan_to_dict(plan: LLMFixPlan) -> dict[str, Any]:
+    return _llm_fix_plan_to_dict(plan)
 
 
 def _status(report: Any) -> str:

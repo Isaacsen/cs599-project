@@ -169,7 +169,7 @@ class PriorityAgentsTest(unittest.TestCase):
         )
 
         self.assertEqual("rule", plan.planner)
-        self.assertIn("no valid target indexes", plan.fallback_reason)
+        self.assertIn("没有返回有效的 target index", plan.fallback_reason)
 
     def test_sandbox_validator_runs_generated_tests_locally(self) -> None:
         unit_report = generate_missing_unit_tests(self.project_path, self.scan)

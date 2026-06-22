@@ -18,7 +18,8 @@ class LLMTestPromptBuilderTest(unittest.TestCase):
 
         prompt = build_test_generation_prompt("examples/sample_python_project", plan)
 
-        self.assertIn("Generate safe pytest tests only", prompt.system)
+        self.assertIn("生成的测试必须安全", prompt.system)
+        self.assertIn("只返回一个 pytest 文件的 Python 代码", prompt.user)
         self.assertIn("calculator.add", prompt.user)
         self.assertIn("calculator.divide", prompt.user)
         self.assertIn("def add", prompt.user)
@@ -47,6 +48,9 @@ class LLMTestPromptBuilderTest(unittest.TestCase):
         self.assertNotIn("LLM_API_KEY", json.dumps(data))
         self.assertNotIn("unit-test-value", json.dumps(data))
         self.assertIn("prompt", data)
+        self.assertNotIn("system", data["prompt"])
+        self.assertNotIn("user", data["prompt"])
+        self.assertIn("user_char_count", data["prompt"])
 
     def test_dashscope_api_key_is_default_env(self) -> None:
         with patch.dict(

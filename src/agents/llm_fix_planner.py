@@ -53,7 +53,7 @@ def plan_llm_fixes(
         return LLMFixPlan(
             status="no_findings",
             targets=[],
-            rationale="No LLM review findings are available.",
+            rationale="当前没有可用的 LLM 审查 findings。",
         )
 
     excluded = exclude_finding_indexes or set()
@@ -66,12 +66,12 @@ def plan_llm_fixes(
         return LLMFixPlan(
             status="no_targets",
             targets=[],
-            rationale="All review findings have already been attempted.",
+            rationale="所有审查 findings 都已经尝试处理过。",
             remaining_count=0,
             planner="rule",
         )
     active_config = config or LLMConfig.from_env()
-    fallback_reason = "LLM planner skipped because no API key is configured."
+    fallback_reason = "未配置 API key，跳过 LLM 修复规划并使用规则排序。"
     if client is not None or active_config.api_key_set or active_config.provider == "ollama":
         llm_plan, fallback_reason = _plan_with_llm(
             llm_review,
@@ -108,7 +108,7 @@ def _plan_with_rules(
     return LLMFixPlan(
         status="planned" if targets else "no_targets",
         targets=targets,
-        rationale="Fix higher severity and sandbox-relevant findings first.",
+        rationale="优先修复严重级别更高、且可能影响 sandbox 失败的问题。",
         remaining_count=remaining_count,
         planner="rule",
         fallback_reason=fallback_reason,
@@ -132,10 +132,10 @@ def _plan_with_llm(
     try:
         raw_response = active_client.generate(prompt)
     except Exception as exc:
-        return None, f"LLM planner failed: {exc}"
+        return None, f"LLM 修复规划失败：{exc}"
     indexes, rationale = _parse_planner_response(raw_response, {index for index, _finding in candidates}, max_targets)
     if not indexes:
-        return None, "LLM planner returned no valid target indexes."
+        return None, "LLM 修复规划没有返回有效的 target index。"
     finding_by_index = dict(candidates)
     targets = [
         LLMFixTarget(
@@ -144,14 +144,14 @@ def _plan_with_llm(
             line=finding_by_index[index].line,
             severity=finding_by_index[index].severity,
             rule=finding_by_index[index].rule,
-            reason=rationale or "Selected by LLM fix planner.",
+            reason=rationale or "由 LLM 修复规划 Agent 选择。",
         )
         for index in indexes
     ]
     return LLMFixPlan(
         status="planned",
         targets=targets,
-        rationale=rationale or "Selected by LLM fix planner.",
+        rationale=rationale or "由 LLM 修复规划 Agent 选择。",
         remaining_count=max(0, len(candidates) - len(targets)),
         planner="llm",
         raw_response=raw_response,
@@ -213,8 +213,8 @@ def _sandbox_text(sandbox_validation: SandboxValidationReport | None) -> str:
 
 def _target_reason(finding: ReviewFinding, sandbox_validation: SandboxValidationReport | None) -> str:
     if sandbox_validation is not None and not sandbox_validation.passed:
-        return "Selected because the latest sandbox failure may be related to this review finding."
-    return f"Selected because it is a {finding.severity} severity review finding."
+        return "选择该项是因为最近一次 sandbox 失败可能与此 review finding 相关。"
+    return f"选择该项是因为它是 {finding.severity} 严重级别的 review finding。"
 
 
 def _build_planner_prompt(
@@ -240,18 +240,21 @@ def _build_planner_prompt(
         "key_findings": sandbox_validation.diagnosis.key_findings[:5],
     } if sandbox_validation is not None else {"status": "not_run"}
     user = (
-        "Choose the next findings for the Code Fix Agent. "
-        f"Select at most {max_targets} finding indexes. Prefer fixes that unlock failing sandbox tests, "
-        "then high severity, then low-risk isolated changes. Return JSON only with this shape:\n"
-        '{"target_indexes":[0],"rationale":"why these should be fixed now"}\n\n'
+        "请为 Code Fix Agent 选择下一轮要修复的审查 finding。"
+        f"最多选择 {max_targets} 个 finding index。优先选择能解除 sandbox 测试失败的问题，"
+        "其次选择高严重级别问题，再选择风险较低且改动隔离的问题。"
+        "只返回 JSON，不要使用 Markdown 代码块。JSON key 必须保持英文，rationale 必须使用中文。\n"
+        "返回格式必须严格符合：\n"
+        '{"target_indexes":[0],"rationale":"中文说明为什么本轮应优先修复这些问题"}\n\n'
         f"Review status: {llm_review.status}\n"
         f"Sandbox summary: {json.dumps(sandbox, ensure_ascii=False)}\n"
         f"Candidate findings: {json.dumps(findings, ensure_ascii=False)}"
     )
     return LLMTestPrompt(
         system=(
-            "You are Software Engineer Agent Fix Planner. Choose a small, ordered batch of review findings "
-            "for the next code-fix attempt. Return valid JSON only."
+            "你是 Software Engineer Agent 的修复规划 Agent。"
+            "请为下一次代码修复选择一小批有顺序的 review findings，并用中文解释选择原因。"
+            "只返回合法 JSON。"
         ),
         user=user,
         covered_functions=[finding.file_path for _index, finding in candidates[:max_targets]],

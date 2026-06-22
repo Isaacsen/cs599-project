@@ -140,34 +140,37 @@ def _build_fix_prompt(
     max_files: int,
 ) -> LLMTestPrompt:
     user_parts = [
-        "Fix the Python source code issues identified by the review and sandbox results.",
-        "Return JSON only with this shape:",
+        "请根据代码审查结果和 sandbox 结果修复 Python 源码问题。",
+        "只返回 JSON，不要使用 Markdown 代码块。JSON key 必须保持英文，summary 必须使用中文。",
+        "返回格式必须严格符合：",
         '{"fixes":[{"file_path":"relative/path.py","summary":"...","replacement_content":"complete file content"}]}',
-        "Rules:",
-        "- Only propose replacements for files included in Source context.",
-        "- replacement_content must be the complete new content of that file.",
-        "- Do not include markdown fences.",
-        "- Preserve public APIs unless a review finding requires a safer behavior.",
+        "规则：",
+        "- 只能修改 Source context 中出现的文件。",
+        "- replacement_content 必须是该文件修复后的完整内容，而不是 diff。",
+        "- 不要包含 Markdown 代码块。",
+        "- 除非 review finding 明确要求更安全的行为，否则保持 public API 不变。",
+        "- Python 代码必须语法正确；代码注释可以使用中文。",
         "",
-        "Selected fix plan:",
+        "本轮修复计划：",
         _format_fix_plan(fix_plan),
         "",
-        "Selected LLM review findings:",
+        "本轮选中的 LLM 审查 findings：",
         _format_findings(selected_findings(llm_review, fix_plan)),
         "",
-        "Latest sandbox result:",
+        "最近一次 sandbox 结果：",
         _format_sandbox(sandbox_validation),
         "",
-        "Repair actions:",
+        "Repair loop 建议动作：",
         "\n".join(f"- {item}" for item in repair_actions) or "- none",
         "",
-        "Source context:",
+        "源码上下文：",
         _collect_source_context(root, scan, max_files),
     ]
     return LLMTestPrompt(
         system=(
-            "You are Software Engineer Agent Code Fix Agent. Produce minimal, safe Python fixes. "
-            "Return valid JSON only and never include secrets."
+            "你是 Software Engineer Agent 的代码修复 Agent。"
+            "请生成最小、可靠、安全的 Python 修复，并用中文概括每个修复。"
+            "只返回合法 JSON，绝不要输出或编造密钥。"
         ),
         user="\n".join(user_parts),
         covered_functions=scan.source_files[:max_files],

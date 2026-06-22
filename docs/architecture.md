@@ -37,6 +37,7 @@ cs599-project/
 │   ├── evaluation/
 │   ├── llm/
 │   ├── sandbox/
+│   ├── server/
 │   ├── tools/
 │   └── workflow/
 ├── web/
@@ -139,7 +140,13 @@ scan
 - `src/llm/config.py`：读取 provider、模型、API Key、超时和重试配置。
 - `src/llm/client.py`：OpenAI-compatible LLM 调用，支持 token 级 stream。
 
-### 5.5 Sandbox 层
+### 5.5 Server / Viewer 层
+
+- `src/server/app.py`：FastAPI 应用，提供前端页面、启动运行 API、取消运行 API、报告 API 和 SSE 事件流。
+- `src/server/run_manager.py`：后台线程运行 LangGraph Agent，收集 `node_start`、`node_end`、`llm_token`、`report`、`cancelled` 和 `run_end` 事件；取消为协作式终止，在节点边界停止。
+- `web/agent-viewer/`：浏览器页面，点击 Start Run 后订阅 `/api/runs/{run_id}/events` 并实时刷新状态图和每轮中间输出。
+
+### 5.6 Sandbox 层
 
 ```mermaid
 graph LR
@@ -195,7 +202,9 @@ Repo Scan Agent 的 stream 输出为紧凑 JSON 摘要，例如：
 - `docs/runs/software_engineer_events.jsonl`：节点级事件日志，供前端 Viewer 回放 Timeline。
 - `docs/runs/software_engineer_agent_flow.png`：LangGraph 流程图。
 - `docs/runs/benchmark.json`：Benchmark 输出。
-- `web/agent-viewer/`：静态前端可视化界面，展示 Agent 状态图、Timeline 和每轮中间输出。
+- `docs/runs/web/<run_id>/`：Web 启动运行后的 JSON、Markdown 和事件日志。
+- `src/server/`：FastAPI + SSE 服务端。
+- `web/agent-viewer/`：前端可视化界面，展示 Agent 状态图、Timeline 和每轮中间输出。
 
 ## 8. 可观测性
 
@@ -204,6 +213,9 @@ Repo Scan Agent 的 stream 输出为紧凑 JSON 摘要，例如：
 - `[agent-stream]`：节点级进度和 Repo Scan 结构化摘要。
 - `[llm-stream]`：默认开启的 LLM token 级输出。
 - `software_engineer_events.jsonl`：结构化 `node_start` / `node_end` 事件。
+- `/api/runs/{run_id}/events`：Web 端 SSE 实时事件流。
+- `/api/runs/{run_id}/cancel`：请求取消当前运行。
+- `llm_token`：LLM 调用过程中逐 token 推送到前端，并在节点详情中累积为 `llm_token_stream`。
 - `Agent Timeline`：每个 Agent 的执行结果。
 - `Highlights`：关键发现、修复计划、沙箱结果和覆盖反馈。
 
@@ -216,11 +228,11 @@ Repo Scan Agent 的 stream 输出为紧凑 JSON 摘要，例如：
 - 沙箱执行结果与失败诊断
 - 覆盖反馈
 
-前端 Viewer 读取 `docs/runs/software_engineer.json` 和 `docs/runs/software_engineer_events.jsonl`，将一次运行拆成：
+前端 Viewer 可以读取已有 CLI 产物，也可以通过 FastAPI 在浏览器中启动新运行。启动后，后端将一次运行拆成：
 
 - Agent 状态图：标记已执行节点和当前最后节点。
 - Timeline：按事件顺序展示节点开始和完成状态。
-- 每轮中间输出：汇总 fix plan、code fix、test writer、sandbox 和 repair loop 的历史记录。
+- 每轮详细输出：展开 Repo Scan、LLM Review、Fix Plan、Code Fix、Test Writer、Sandbox、Repair Loop 和 Coverage 的结构化输出。
 
 ## 9. 课程要求映射
 

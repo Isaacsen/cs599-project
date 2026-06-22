@@ -96,16 +96,18 @@ def _build_review_prompt(root: Path, scan: RepositoryScanResult, max_files: int)
         content = path.read_text(encoding="utf-8")
         chunks.append(f"# {relative_file}\n{content[:6000]}")
     user = (
-        "Review the following Python source for correctness, security, edge cases, and testability.\n"
-        "Return JSON only with this shape:\n"
+        "请审查下面的 Python 源码，重点关注正确性、安全性、边界条件、可测试性和可维护性。\n"
+        "只返回 JSON，不要使用 Markdown 代码块。JSON key 必须保持英文，"
+        "但 message 和 suggestion 的自然语言内容必须使用中文。\n"
+        "返回格式必须严格符合：\n"
         '{"findings":[{"file_path":"...","line":1,"severity":"high|medium|low",'
         '"rule":"llm_review","message":"...","suggestion":"..."}]}\n\n'
         + "\n\n".join(chunks)
     )
     return LLMTestPrompt(
         system=(
-            "You are Software Engineer Agent Code Review Agent. Produce concise, actionable findings. "
-            "Do not include secrets. Return valid JSON only."
+            "你是 Software Engineer Agent 的代码审查 Agent。"
+            "请输出简洁、可执行的中文审查意见。不要泄露或编造密钥。只返回合法 JSON。"
         ),
         user=user,
         covered_functions=scan.source_files[:max_files],

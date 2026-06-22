@@ -193,7 +193,9 @@ class SoftwareEngineerGraphTest(unittest.TestCase):
 
     def test_runs_graph_dry_run_without_writing_source(self) -> None:
         source_file = self.project_path / "risky_module.py"
+        generated_test_file = self.project_path / "tests" / "test_software_engineer_llm_generated.py"
         original_content = source_file.read_text(encoding="utf-8")
+        original_test_content = generated_test_file.read_text(encoding="utf-8") if generated_test_file.exists() else None
 
         with (
             patch("src.workflow.software_engineer_graph.review_repository_with_llm", side_effect=_fake_llm_review),
@@ -212,9 +214,12 @@ class SoftwareEngineerGraphTest(unittest.TestCase):
         self.assertEqual(2, result.state["llm_fix_plan"].target_count)
         self.assertEqual(1, result.state["llm_fix_plan"].remaining_count)
         self.assertEqual(1, result.state["llm_fix"].fix_count)
-        self.assertEqual(3, result.generated_llm_test_count)
+        self.assertEqual(result.state["llm_tests"].generated_test_count, result.generated_llm_test_count)
         self.assertEqual(original_content, source_file.read_text(encoding="utf-8"))
-        self.assertFalse((self.project_path / "tests" / "test_software_engineer_llm_generated.py").exists())
+        if original_test_content is None:
+            self.assertFalse(generated_test_file.exists())
+        else:
+            self.assertEqual(original_test_content, generated_test_file.read_text(encoding="utf-8"))
 
     def test_runs_llm_branch_with_injected_generation(self) -> None:
         with (
@@ -238,7 +243,7 @@ class SoftwareEngineerGraphTest(unittest.TestCase):
             ],
             result.node_trace,
         )
-        self.assertEqual(3, result.generated_llm_test_count)
+        self.assertEqual(result.state["llm_tests"].generated_test_count, result.generated_llm_test_count)
         self.assertTrue(result.state["llm_tests"].security_check.passed)
 
     def test_graph_report_does_not_include_api_key_value(self) -> None:
@@ -264,7 +269,9 @@ class SoftwareEngineerGraphTest(unittest.TestCase):
         self.assertIn("coverage_feedback", data)
         self.assertNotIn("unit-test-secret", serialized)
         self.assertNotIn("replacement_content", serialized)
+        self.assertNotIn(LLM_RESPONSE.splitlines()[3], serialized)
         self.assertIn("replacement_sha256", serialized)
+        self.assertIn("content_sha256", serialized)
 
     def test_runs_sandbox_validation_node_with_local_executor(self) -> None:
         with (

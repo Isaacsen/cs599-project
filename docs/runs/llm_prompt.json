@@ -1,17 +1,21 @@
-﻿{
+{
   "llm_config": {
     "provider": "dashscope",
     "model": "glm-5.2",
-    "api_key_set": true,
+    "api_key_set": false,
     "api_key_env": "DASHSCOPE_API_KEY",
-    "base_url": "https://dashscope.aliyuncs.com/compatible-mode/v1"
+    "base_url": "",
+    "timeout_seconds": 120,
+    "max_retries": 1
   },
   "prompt": {
-    "system": "You are Software Engineer Agent, an expert Python test generation assistant. Generate safe pytest tests only. Do not use network access, subprocesses, file system mutation, eval, exec, or hardcoded secrets.",
-    "user": "Generate pytest tests for the following planned cases.\n\nReturn only Python code for one pytest file.\n\nTest plan:\n\n1. Function: calculator.add\n   Scenario: numeric addition happy path\n   Rationale: Addition-like functions should preserve basic arithmetic behavior.\n2. Function: calculator.divide\n   Scenario: division happy path and zero-division boundary\n   Rationale: Division-like functions need both normal input and denominator-zero coverage.\n\nSource context:\n\n# calculator.py\ndef add(a: float, b: float) -> float:\n    return a + b\n\n\ndef divide(a: float, b: float) -> float:\n    return a / b\n",
     "covered_functions": [
-      "calculator.add",
-      "calculator.divide"
-    ]
+      "risky_module.divide",
+      "risky_module.parse_expression",
+      "risky_module.require_api_token",
+      "risky_module.hide_error"
+    ],
+    "system_char_count": 145,
+    "user_char_count": 2072
   }
 }

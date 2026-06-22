@@ -25,17 +25,18 @@ def build_test_generation_prompt(
     plan_context = _format_plan(test_plan)
 
     system = (
-        "You are Software Engineer Agent, an expert Python test generation assistant. "
-        "Generate safe pytest tests only. Do not use network access, subprocesses, "
-        "file system mutation, eval, exec, or hardcoded secrets."
+        "你是 Software Engineer Agent 的 Python 单元测试生成 Agent。"
+        "请用中文进行推理和说明，但最终只输出一个 pytest 测试文件的 Python 代码。"
+        "生成的测试必须安全：禁止网络访问、subprocess、文件系统写入、eval、exec 和硬编码密钥。"
     )
     user = "\n\n".join(
         [
-            "Generate pytest tests for the following planned cases.",
-            "Return only Python code for one pytest file.",
-            "Test plan:",
+            "请根据下面的计划生成 pytest 测试。",
+            "只返回一个 pytest 文件的 Python 代码，不要使用 Markdown 代码块，不要输出额外解释。",
+            "测试函数名、注释和断言消息可以使用中文，但 Python 语法必须有效。",
+            "测试计划：",
             plan_context,
-            "Source context:",
+            "源码上下文：",
             source_context,
         ]
     )
