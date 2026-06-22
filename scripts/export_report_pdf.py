@@ -148,10 +148,12 @@ def build_styles() -> dict[str, ParagraphStyle]:
 def markdown_to_story(markdown: str, styles: dict[str, ParagraphStyle]) -> list:
     story: list = []
     lines = markdown.splitlines()
+    heading_keys = collect_heading_keys(lines)
     index = 0
     in_code = False
     code_lines: list[str] = []
     heading_index = 0
+    in_toc = False
 
     while index < len(lines):
         line = lines[index]
@@ -198,6 +200,12 @@ def markdown_to_story(markdown: str, styles: dict[str, ParagraphStyle]) -> list:
         if heading:
             level = len(heading.group(1))
             text = clean_inline(heading.group(2))
+            if text == "目录" and story:
+                story.append(PageBreak())
+                in_toc = True
+            elif in_toc and level == 2:
+                story.append(PageBreak())
+                in_toc = False
             heading_index += 1
             key = f"heading-{heading_index}"
             if level == 1:
@@ -208,8 +216,17 @@ def markdown_to_story(markdown: str, styles: dict[str, ParagraphStyle]) -> list:
                 story.append(BookmarkParagraph(text, styles["h3"], key, 3))
             else:
                 story.append(BookmarkParagraph(text, styles["h4"], key, 4))
-            if text == "目录":
-                story.append(PageBreak())
+            index += 1
+            continue
+
+        numbered = re.match(r"^\d+\.\s+(.+)$", line.strip())
+        if numbered:
+            label = clean_inline(line.strip())
+            target = clean_inline(numbered.group(1))
+            target_key = heading_keys.get(target, [None])[0]
+            if in_toc and target_key:
+                label = f"<a href='#{target_key}' color='#1d4ed8'>{label}</a>"
+            story.append(Paragraph(label, styles["normal"]))
             index += 1
             continue
 
@@ -229,6 +246,25 @@ def markdown_to_story(markdown: str, styles: dict[str, ParagraphStyle]) -> list:
         story.append(Paragraph(clean_inline(" ".join(paragraph_lines)), styles["normal"]))
 
     return story
+
+
+def collect_heading_keys(lines: list[str]) -> dict[str, list[str]]:
+    heading_keys: dict[str, list[str]] = {}
+    heading_index = 0
+    in_code = False
+    for line in lines:
+        if line.strip().startswith("```"):
+            in_code = not in_code
+            continue
+        if in_code:
+            continue
+        heading = re.match(r"^(#{1,4})\s+(.+)$", line)
+        if not heading:
+            continue
+        heading_index += 1
+        text = clean_inline(heading.group(2))
+        heading_keys.setdefault(text, []).append(f"heading-{heading_index}")
+    return heading_keys
 
 
 def build_image(path: Path) -> ReportImage:
