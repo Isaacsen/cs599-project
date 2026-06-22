@@ -12,6 +12,7 @@ from reportlab.lib.units import mm
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.platypus import (
+    Image as ReportImage,
     PageBreak,
     Paragraph,
     Preformatted,
@@ -173,6 +174,17 @@ def markdown_to_story(markdown: str, styles: dict[str, ParagraphStyle]) -> list:
             index += 1
             continue
 
+        image = re.match(r"^!\[([^\]]*)\]\(([^)]+)\)$", line.strip())
+        if image:
+            image_path = (SOURCE.parent / image.group(2)).resolve()
+            if image_path.exists():
+                story.append(build_image(image_path))
+                story.append(Spacer(1, 8))
+            else:
+                story.append(Paragraph(f"图片缺失：{clean_inline(image.group(2))}", styles["normal"]))
+            index += 1
+            continue
+
         if _is_table_start(lines, index):
             table_lines: list[str] = []
             while index < len(lines) and lines[index].strip().startswith("|"):
@@ -217,6 +229,18 @@ def markdown_to_story(markdown: str, styles: dict[str, ParagraphStyle]) -> list:
         story.append(Paragraph(clean_inline(" ".join(paragraph_lines)), styles["normal"]))
 
     return story
+
+
+def build_image(path: Path) -> ReportImage:
+    max_width = A4[0] - 36 * mm
+    max_height = 120 * mm
+    image = ReportImage(str(path))
+    width, height = image.imageWidth, image.imageHeight
+    scale = min(max_width / width, max_height / height, 1)
+    image.drawWidth = width * scale
+    image.drawHeight = height * scale
+    image.hAlign = "CENTER"
+    return image
 
 
 def build_table(table_lines: list[str], styles: dict[str, ParagraphStyle]) -> Table:

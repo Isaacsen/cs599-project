@@ -12,6 +12,7 @@ htmlcov/
 
 # Runtime artifacts
 docs/runs/web/
+examples/review_target/tests/
 
 # Virtual environments
 .venv/

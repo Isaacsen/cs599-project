@@ -7,17 +7,23 @@ from typing import Any
 
 def divide(a: float, b: float) -> float:
     """返回 a / b。仅支持数字类型，非数字输入抛出 TypeError，除零抛出 ZeroDivisionError。"""
-    if not isinstance(a, Number) or not isinstance(b, Number):
+    if not isinstance(a, (int, float)) or not isinstance(b, (int, float)):
         raise TypeError(f"unsupported operand types for divide: {type(a).__name__}, {type(b).__name__}")
     if b == 0:
         raise ZeroDivisionError("division by zero")
     return a / b
 
 
+# 输入字符串最大长度，防止超大 JSON 导致内存耗尽（DoS）
+_MAX_EXPRESSION_LENGTH = 1_000_000
+
+
 def parse_expression(expression: str) -> Any:
     """解析 JSON 表达式，非法输入或解析失败时抛出 ValueError。"""
     if not isinstance(expression, str) or not expression.strip():
         raise ValueError("expression must be a non-empty string")
+    if len(expression) > _MAX_EXPRESSION_LENGTH:
+        raise ValueError(f"expression exceeds maximum allowed length of {_MAX_EXPRESSION_LENGTH} characters")
     try:
         return json.loads(expression)
     except json.JSONDecodeError as exc:

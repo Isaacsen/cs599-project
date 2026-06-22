@@ -84,29 +84,29 @@ def write_software_engineer_markdown(result: SoftwareEngineerGraphResult, output
 def format_software_engineer_markdown(result: SoftwareEngineerGraphResult) -> str:
     state = result.state
     lines = [
-        "# Software Engineer Agent Report",
+        "# Software Engineer Agent 运行报告",
         "",
-        "## Summary",
+        "## 运行摘要",
         "",
-        "| Item | Value |",
+        "| 项目 | 值 |",
         "| --- | --- |",
-        f"| Project | `{result.project_path}` |",
-        f"| Status | `{state.get('status', 'unknown')}` |",
-        f"| Runtime | `{result.graph_runtime}` |",
-        f"| Repo Scan | `{_status(state.get('scan'))}` |",
-        f"| LLM Review Findings | {_count(state.get('llm_review'), 'finding_count')} |",
-        f"| Attempted Findings | {len(state.get('attempted_finding_indexes', state.get('processed_finding_indexes', [])))} |",
-        f"| Resolved Findings | {len(state.get('resolved_finding_indexes', []))} |",
-        f"| Unresolved Findings | {len(_unresolved_finding_indexes(state))} |",
-        f"| Finding Rounds | {state.get('finding_round', 0)} |",
-        f"| LLM Fixes | {_fix_count(state)} |",
-        f"| Generated LLM Tests | {result.generated_llm_test_count} |",
-        f"| Sandbox Validation | `{_status(state.get('sandbox_validation'))}` |",
-        f"| Coverage | {_coverage_value(state.get('coverage_feedback'))} |",
+        f"| 目标项目 | `{result.project_path}` |",
+        f"| 最终状态 | `{state.get('status', 'unknown')}` |",
+        f"| 运行时 | `{result.graph_runtime}` |",
+        f"| 仓库扫描 | `{_status(state.get('scan'))}` |",
+        f"| LLM 审查 findings | {_count(state.get('llm_review'), 'finding_count')} |",
+        f"| 已尝试 findings | {len(state.get('attempted_finding_indexes', state.get('processed_finding_indexes', [])))} |",
+        f"| 已解决 findings | {len(state.get('resolved_finding_indexes', []))} |",
+        f"| 未解决 findings | {len(_unresolved_finding_indexes(state))} |",
+        f"| Finding 处理轮次 | {state.get('finding_round', 0)} |",
+        f"| LLM 修复建议数 | {_fix_count(state)} |",
+        f"| LLM 生成测试数 | {result.generated_llm_test_count} |",
+        f"| 沙箱验证 | `{_status(state.get('sandbox_validation'))}` |",
+        f"| 覆盖率 | {_coverage_value(state.get('coverage_feedback'))} |",
         "",
-        "## Agent Timeline",
+        "## Agent 时间线",
         "",
-        "| Step | Agent | Result |",
+        "| 步骤 | Agent | 结果 |",
         "| --- | --- | --- |",
     ]
     occurrences: dict[str, int] = {}
@@ -114,38 +114,38 @@ def format_software_engineer_markdown(result: SoftwareEngineerGraphResult) -> st
         occurrences[node] = occurrences.get(node, 0) + 1
         lines.append(f"| {index} | `{node}` | {_node_result(state, node, occurrences[node])} |")
 
-    lines.extend(["", "## Repo Scan", ""])
+    lines.extend(["", "## 仓库扫描", ""])
     lines.extend(_scan_section(state.get("scan")))
-    lines.extend(["", "## LLM Review Findings", ""])
+    lines.extend(["", "## LLM 代码审查 Findings", ""])
     unresolved = _unresolved_finding_indexes(state)
     if unresolved:
         lines.extend(
             [
-                f"Review resolution: **{len(unresolved)} unresolved finding(s)**. "
-                "Passing sandbox tests and 100% generated-test coverage do not mean review findings are fixed "
-                "unless fixes were applied and validated.",
+                f"审查结论：仍有 **{len(unresolved)} 个未解决 finding**。"
+                "沙箱测试通过或生成测试覆盖率达到 100%，并不等价于审查问题已经修复；"
+                "只有在修复被写回并验证后，finding 才能视为 resolved。",
                 "",
             ]
         )
     lines.extend(_finding_table(state.get("llm_review")))
-    lines.extend(["", "## LLM Fix Plan", ""])
+    lines.extend(["", "## LLM 修复计划", ""])
     lines.extend(_fix_plan_section(state.get("llm_fix_plan")))
     if state.get("llm_fix_plan_history"):
-        lines.extend(["", "## LLM Fix Plan History", ""])
+        lines.extend(["", "## LLM 修复计划历史", ""])
         lines.extend(_fix_plan_history_section(state.get("llm_fix_plan_history")))
-    lines.extend(["", "## LLM Code Fixes", ""])
+    lines.extend(["", "## LLM 代码修复", ""])
     lines.extend(_fix_section(state.get("llm_fix")))
     if state.get("llm_fix_history"):
-        lines.extend(["", "## LLM Code Fix History", ""])
+        lines.extend(["", "## LLM 代码修复历史", ""])
         lines.extend(_fix_history_section(state.get("llm_fix_history")))
-    lines.extend(["", "## Sandbox Validation", ""])
+    lines.extend(["", "## 沙箱验证", ""])
     lines.extend(_sandbox_section(state.get("sandbox_validation")))
-    lines.extend(["", "## Coverage Feedback", ""])
+    lines.extend(["", "## 覆盖率反馈", ""])
     lines.extend(_coverage_section(state.get("coverage_feedback")))
     lines.extend(["", "## Repair Loop", ""])
     lines.extend(_repair_section(state.get("repair_loop")))
     if state.get("repair_history"):
-        lines.extend(["", "## Repair History", ""])
+        lines.extend(["", "## Repair 历史", ""])
         lines.extend(_repair_history_section(state.get("repair_history")))
     return "\n".join(lines).rstrip() + "\n"
 
@@ -328,8 +328,8 @@ def _llm_test_result(report: Any) -> str:
 
 def _finding_table(report: Any) -> list[str]:
     if report is None or not report.findings:
-        return ["No findings."]
-    lines = ["| Severity | Rule | Location | Message | Suggestion |", "| --- | --- | --- | --- | --- |"]
+        return ["没有 findings。"]
+    lines = ["| 严重级别 | 规则 | 位置 | 问题 | 建议 |", "| --- | --- | --- | --- | --- |"]
     for finding in report.findings[:8]:
         location = f"{finding.file_path}:{finding.line}" if finding.file_path else "-"
         lines.append(
@@ -350,40 +350,40 @@ def _finding_table(report: Any) -> list[str]:
 
 def _sandbox_section(report: Any) -> list[str]:
     if report is None:
-        return ["Sandbox validation was not run."]
+        return ["本次未运行沙箱验证。"]
     analysis = report.analysis
     lines = [
-        f"Status: `{report.status}`",
+        f"状态：`{report.status}`",
         "",
-        "| Executor | Total | Passed | Failed | Errors |",
+        "| 执行器 | 总数 | 通过 | 失败 | 错误 |",
         "| --- | ---: | ---: | ---: | ---: |",
         f"| `{report.executor}` | {analysis.total} | {analysis.passed} | {analysis.failed} | {analysis.errors} |",
     ]
     if report.diagnosis.suggestions:
-        lines.extend(["", "Suggestions:"])
+        lines.extend(["", "建议："])
         lines.extend(f"- {item}" for item in report.diagnosis.suggestions)
     return lines
 
 
 def _scan_section(report: Any) -> list[str]:
     if report is None:
-        return ["Repository scan was not run."]
+        return ["本次未运行仓库扫描。"]
     lines = [
-        f"Status: `{report.status}`",
+        f"状态：`{report.status}`",
         "",
-        "| Item | Count |",
+        "| 项目 | 数量 |",
         "| --- | ---: |",
-        f"| Source files | {len(report.source_files)} |",
-        f"| Test files | {len(report.test_files)} |",
-        f"| Config files | {len(report.config_files or [])} |",
-        f"| Dependency files | {len(report.dependency_files or [])} |",
-        f"| Package roots | {len(report.package_roots or [])} |",
-        f"| Entry points | {len(report.entry_points or [])} |",
+        f"| 源码文件 | {len(report.source_files)} |",
+        f"| 测试文件 | {len(report.test_files)} |",
+        f"| 配置文件 | {len(report.config_files or [])} |",
+        f"| 依赖文件 | {len(report.dependency_files or [])} |",
+        f"| 包根目录 | {len(report.package_roots or [])} |",
+        f"| 入口点 | {len(report.entry_points or [])} |",
     ]
     if report.error_summary:
-        lines.extend(["", f"Failure summary: `{_cell(report.error_summary)}`"])
+        lines.extend(["", f"失败摘要：`{_cell(report.error_summary)}`"])
     if report.issues:
-        lines.extend(["", "Scan issues:"])
+        lines.extend(["", "扫描发现的问题："])
         lines.extend(f"- [{issue.severity}] {_cell(issue.message)}" for issue in report.issues[:6])
     return lines
 
@@ -399,26 +399,26 @@ def _scan_timeline_result(report: Any) -> str:
 
 def _fix_section(report: Any) -> list[str]:
     if report is None:
-        return ["LLM code fixer was not run."]
+        return ["本次未运行 LLM 代码修复 Agent。"]
     if not report.fixes:
-        lines = [f"Status: `{report.status}`. No fixes were proposed."]
+        lines = [f"状态：`{report.status}`。没有生成修复建议。"]
         error_summary = _fix_error_summary(report)
         if error_summary:
-            lines.extend(["", f"Failure summary: `{_cell(error_summary)}`"])
+            lines.extend(["", f"失败摘要：`{_cell(error_summary)}`"])
         return lines
     lines = []
     if report.patch_review:
         lines.extend(
             [
-                f"Patch review: `{'passed' if report.patch_review.passed else 'failed'}` "
-                f"({report.patch_review.violation_count} violation(s))",
+                f"Patch 安全检查：`{'passed' if report.patch_review.passed else 'failed'}` "
+                f"（{report.patch_review.violation_count} 个违规项）",
                 "",
             ]
         )
         if report.patch_review.violations:
             lines.extend(f"- {_cell(item)}" for item in report.patch_review.violations[:5])
             lines.append("")
-    lines.extend(["| File | Applied | Summary | Replacement SHA-256 |", "| --- | --- | --- | --- |"])
+    lines.extend(["| 文件 | 是否写回 | 摘要 | Replacement SHA-256 |", "| --- | --- | --- | --- |"])
     for fix in report.fixes[:8]:
         lines.append(
             f"| `{_cell(fix.file_path)}` | `{fix.applied}` | {_cell(fix.summary)} | "
@@ -429,20 +429,20 @@ def _fix_section(report: Any) -> list[str]:
 
 def _fix_plan_section(plan: Any) -> list[str]:
     if plan is None:
-        return ["LLM fix planner was not run."]
+        return ["本次未运行 LLM 修复规划 Agent。"]
     if not plan.targets:
-        lines = [f"Status: `{plan.status}`. No fix targets were selected. Remaining findings: {plan.remaining_count}."]
+        lines = [f"状态：`{plan.status}`。没有选择修复目标。剩余 findings：{plan.remaining_count}。"]
         if plan.fallback_reason:
-            lines.append(f"Fallback reason: `{_cell(plan.fallback_reason)}`")
+            lines.append(f"降级原因：`{_cell(plan.fallback_reason)}`")
         return lines
     lines = [
-        f"Planner: `{plan.planner}`",
-        f"Remaining findings after this plan: **{plan.remaining_count}**",
+        f"规划器：`{plan.planner}`",
+        f"本轮规划后剩余 findings：**{plan.remaining_count}**",
         "",
     ]
     if plan.fallback_reason:
-        lines.extend([f"Fallback reason: `{_cell(plan.fallback_reason)}`", ""])
-    lines.extend(["| Order | Finding | Severity | Reason |", "| ---: | --- | --- | --- |"])
+        lines.extend([f"降级原因：`{_cell(plan.fallback_reason)}`", ""])
+    lines.extend(["| 顺序 | Finding | 严重级别 | 原因 |", "| ---: | --- | --- | --- |"])
     for order, target in enumerate(plan.targets, start=1):
         finding = f"{target.file_path}:{target.line} ({target.rule})"
         lines.append(
@@ -462,9 +462,9 @@ def _fix_plan_section(plan: Any) -> list[str]:
 
 def _fix_plan_history_section(history: Any) -> list[str]:
     if not history:
-        return ["No fix-plan history was recorded."]
+        return ["没有记录修复计划历史。"]
     lines = [
-        "| Round | Planner | Targets | Remaining | Fallback | Rationale |",
+        "| 轮次 | 规划器 | 目标 | 剩余 | 降级原因 | 规划理由 |",
         "| ---: | --- | --- | ---: | --- | --- |",
     ]
     for round_index, plan in enumerate(history, start=1):
@@ -488,9 +488,9 @@ def _fix_plan_history_section(history: Any) -> list[str]:
 
 def _fix_history_section(history: Any) -> list[str]:
     if not history:
-        return ["No code-fix history was recorded."]
+        return ["没有记录代码修复历史。"]
     lines = [
-        "| Round | Status | Fixes | Applied | Patch Review | Summary | Error |",
+        "| 轮次 | 状态 | 修复数 | 是否写回 | Patch 检查 | 摘要 | 错误 |",
         "| ---: | --- | ---: | --- | --- | --- | --- |",
     ]
     for round_index, report in enumerate(history, start=1):
@@ -515,24 +515,24 @@ def _fix_history_section(history: Any) -> list[str]:
 
 def _coverage_section(report: Any) -> list[str]:
     if report is None:
-        return ["Coverage feedback was not run."]
+        return ["本次未运行覆盖率反馈。"]
     lines = [
-        f"Coverage ratio: **{report.coverage_ratio:.0%}**",
+        f"覆盖率：**{report.coverage_ratio:.0%}**",
         "",
-        f"Covered functions: {', '.join(f'`{item}`' for item in report.covered_functions) or 'none'}",
-        f"Missing functions: {', '.join(f'`{item}`' for item in report.missing_functions) or 'none'}",
+        f"已覆盖函数：{', '.join(f'`{item}`' for item in report.covered_functions) or 'none'}",
+        f"缺失函数：{', '.join(f'`{item}`' for item in report.missing_functions) or 'none'}",
     ]
     return lines
 
 
 def _repair_section(report: Any) -> list[str]:
     if report is None:
-        return ["Repair loop was not run."]
+        return ["本次未运行 Repair Loop。"]
     lines = [
-        f"Status: `{report.status}`",
-        f"Next step: `{report.next_step}`",
+        f"状态：`{report.status}`",
+        f"下一步：`{report.next_step}`",
         "",
-        "Actions:",
+        "动作：",
     ]
     lines.extend(f"- {item}" for item in report.actions)
     return lines
@@ -540,8 +540,8 @@ def _repair_section(report: Any) -> list[str]:
 
 def _repair_history_section(history: Any) -> list[str]:
     if not history:
-        return ["No repair iterations were recorded."]
-    lines = ["| Iteration | Status | Next Step | First Action |", "| ---: | --- | --- | --- |"]
+        return ["没有记录 repair 迭代。"]
+    lines = ["| 迭代 | 状态 | 下一步 | 首个动作 |", "| ---: | --- | --- | --- |"]
     for report in history:
         first_action = report.actions[0] if report.actions else ""
         lines.append(

@@ -67,16 +67,16 @@
         "line": 4,
         "severity": "medium",
         "rule": "llm_review",
-        "message": "divide ???????????????????",
-        "suggestion": "???????????? pytest ???"
+        "message": "divide should keep zero-division behavior covered by tests.",
+        "suggestion": "Generate pytest cases for normal division and zero denominator."
       },
       {
         "file_path": "risky_module.py",
         "line": 12,
         "severity": "low",
         "rule": "llm_review",
-        "message": "??????????????????",
-        "suggestion": "???????? JSON ?????????"
+        "message": "parse_expression should document invalid input behavior.",
+        "suggestion": "Cover empty input and invalid JSON input in generated tests."
       }
     ]
   },
@@ -159,10 +159,10 @@
     "fixes": [
       {
         "file_path": "risky_module.py",
-        "summary": "????????? dry-run???????",
+        "summary": "Dry-run fix suggestion is recorded without writing source files.",
         "applied": false,
-        "replacement_sha256": "488feb665b30faf301a1d6bdf90add60b438c7bce3d2c09d6f650f9e33a05b71",
-        "replacement_char_count": 1231
+        "replacement_sha256": "dfe60d17ebaab5b06fffa763d6e95d5bf4a29de09681ac8f3cdd6a80f81bc3ca",
+        "replacement_char_count": 1473
       }
     ]
   },
@@ -186,10 +186,10 @@
       "fixes": [
         {
           "file_path": "risky_module.py",
-          "summary": "????????? dry-run???????",
+          "summary": "Dry-run fix suggestion is recorded without writing source files.",
           "applied": false,
-          "replacement_sha256": "488feb665b30faf301a1d6bdf90add60b438c7bce3d2c09d6f650f9e33a05b71",
-          "replacement_char_count": 1231
+          "replacement_sha256": "dfe60d17ebaab5b06fffa763d6e95d5bf4a29de09681ac8f3cdd6a80f81bc3ca",
+          "replacement_char_count": 1473
         }
       ]
     }
@@ -246,7 +246,7 @@
         "risky_module.hide_error"
       ],
       "system_char_count": 145,
-      "user_char_count": 2072
+      "user_char_count": 2314
     },
     "security_check": {
       "passed": true,
@@ -318,7 +318,7 @@
           "risky_module.hide_error"
         ],
         "system_char_count": 145,
-        "user_char_count": 2072
+        "user_char_count": 2314
       },
       "security_check": {
         "passed": true,
