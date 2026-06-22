@@ -226,11 +226,11 @@ scripts/final_verify.ps1
 ## 文档与交付物
 
 - `docs/CS599_大作业报告.md`：课程最终报告源文件，包含封面、目录、七章正文，以及内嵌 Product Spec / Architecture Spec / API Spec。
-- `docs/CS599_大作业报告.pdf`：由 `scripts/export_report_pdf.py` 导出的最终 PDF 报告，包含书签导航。
+- `docs/CS599_大作业报告.pdf`：由 `scripts/export_report_pdf.py` 导出的最终 PDF 报告，封面单独成页，目录可点击跳转，并包含书签导航。
 - `docs/architecture.md`：项目架构和 LangGraph 工作流说明。
 - `docs/runs/software_engineer.json`：主 Agent JSON 运行报告。
 - `docs/runs/software_engineer.md`：主 Agent Markdown 运行报告。
-- `docs/runs/software_engineer_events.jsonl`：前端可视化读取的结构化 Agent 事件日志。
+- `docs/runs/software_engineer_events.jsonl`：运行时生成的结构化 Agent 事件日志，供前端可视化回放 Timeline。
 - `docs/runs/software_engineer_agent_flow.png`：LangGraph Agent 流程图。
 - `docs/runs/benchmark.json`：Benchmark 输出。
 - `src/server/`：FastAPI + SSE 服务端。

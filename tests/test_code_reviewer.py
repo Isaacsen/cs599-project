@@ -12,7 +12,7 @@ class CodeReviewerAgentTest(unittest.TestCase):
         rules = {finding.rule for finding in report.findings}
 
         self.assertIn("missing_test", rules)
-        self.assertEqual(3, report.finding_count)
+        self.assertEqual(4, report.finding_count)
         self.assertEqual(0, report.high_count)
 
     def test_review_report_dict_contains_summary(self) -> None:

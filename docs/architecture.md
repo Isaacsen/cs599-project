@@ -196,10 +196,10 @@ Repo Scan Agent 的 stream 输出为紧凑 JSON 摘要，例如：
 - `README.md`：项目入口、运行方式和交付物说明。
 - `docs/architecture.md`：当前架构说明。
 - `docs/CS599_大作业报告.md`：课程最终报告源文件，包含封面、目录、七章正文和内嵌 SDD Specs。
-- `docs/CS599_大作业报告.pdf`：由 `scripts/export_report_pdf.py` 导出的最终 PDF，包含书签导航。
+- `docs/CS599_大作业报告.pdf`：由 `scripts/export_report_pdf.py` 导出的最终 PDF，封面单独成页，目录可点击跳转，并包含书签导航。
 - `docs/runs/software_engineer.json`：主 Agent JSON 运行报告。
 - `docs/runs/software_engineer.md`：主 Agent Markdown 运行报告。
-- `docs/runs/software_engineer_events.jsonl`：节点级事件日志，供前端 Viewer 回放 Timeline。
+- `docs/runs/software_engineer_events.jsonl`：运行时生成的节点级事件日志，供前端 Viewer 回放 Timeline。
 - `docs/runs/software_engineer_agent_flow.png`：LangGraph 流程图。
 - `docs/runs/benchmark.json`：Benchmark 输出。
 - `docs/runs/web/<run_id>/`：Web 启动运行后的 JSON、Markdown 和事件日志。

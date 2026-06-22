@@ -24,10 +24,15 @@ class UnitTestWriterAgentTest(unittest.TestCase):
 
         self.assertFalse(report.applied)
         self.assertFalse(target_file.exists())
-        self.assertEqual(3, report.generated_test_count)
+        self.assertEqual(4, report.generated_test_count)
         self.assertTrue(report.security_check.passed)
         self.assertEqual(
-            ["risky_module.divide", "risky_module.parse_expression", "risky_module.hide_error"],
+            [
+                "risky_module.divide",
+                "risky_module.parse_expression",
+                "risky_module.require_api_token",
+                "risky_module.hide_error",
+            ],
             report.suite.covered_functions,
         )
         self.assertIn("with pytest.raises(ZeroDivisionError):", report.suite.content)
