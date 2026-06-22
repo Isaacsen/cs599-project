@@ -41,10 +41,38 @@ def validate_generated_tests_in_sandbox(
     timeout_seconds: int = 30,
 ) -> SandboxValidationReport:
     root = Path(project_path).resolve()
-    with tempfile.TemporaryDirectory(prefix="software-engineer-agent-agent-") as temp_dir:
-        workspace = _copy_project(root, temp_dir)
-        generated_files = _write_generated_tests(workspace, unit_tests, llm_tests)
-        execution = _run_executor(workspace, executor, docker_image, timeout_seconds)
+    try:
+        with tempfile.TemporaryDirectory(prefix="software-engineer-agent-agent-") as temp_dir:
+            workspace = _copy_project(root, temp_dir)
+            generated_files = _write_generated_tests(workspace, unit_tests, llm_tests)
+            execution = _run_executor(workspace, executor, docker_image, timeout_seconds)
+    except Exception as exc:
+        execution = TestExecutionResult(
+            passed=False,
+            exit_code=None,
+            stdout="",
+            stderr=f"{type(exc).__name__}: {exc}",
+            duration_seconds=0.0,
+            timed_out=False,
+            executor=executor,
+        )
+        analysis = PytestSummary(total=0, conclusion="error", errors=1)
+        diagnosis = FailureDiagnosis(
+            status="needs_attention",
+            failure_types=["sandbox_error"],
+            key_findings=[execution.stderr],
+            suggestions=["Inspect sandbox configuration, Docker availability, and target project path."],
+        )
+        return SandboxValidationReport(
+            project_path=str(root),
+            status="failed",
+            executor=executor,
+            generated_test_files=[],
+            execution=execution,
+            analysis=analysis,
+            diagnosis=diagnosis,
+            security_checks=[],
+        )
 
     analysis = analyze_pytest_result(execution)
     diagnosis = diagnose_failure(execution, analysis)

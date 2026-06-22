@@ -183,6 +183,16 @@ class PriorityAgentsTest(unittest.TestCase):
         self.assertEqual(4, report.analysis.total)
         self.assertIn("tests/test_software_engineer_generated.py", report.generated_test_files)
 
+    def test_sandbox_validator_returns_structured_failure_on_executor_error(self) -> None:
+        report = validate_generated_tests_in_sandbox(
+            self.project_path,
+            executor="unsupported",
+        )
+
+        self.assertEqual("failed", report.status)
+        self.assertEqual(["sandbox_error"], report.diagnosis.failure_types)
+        self.assertIn("Unsupported sandbox executor", report.execution.stderr)
+
     def test_coverage_feedback_reports_missing_functions(self) -> None:
         unit_report = UnitTestReport(
             project_path=str(self.project_path),

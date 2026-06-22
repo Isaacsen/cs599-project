@@ -9,6 +9,8 @@ from pathlib import Path
 
 @dataclass(frozen=True)
 class TestExecutionResult:
+    __test__ = False
+
     passed: bool
     exit_code: int | None
     stdout: str

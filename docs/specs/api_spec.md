@@ -32,7 +32,7 @@ python -m src.engineer examples/review_target --run-sandbox --sandbox-executor d
 ## 2. 辅助入口
 
 ```bash
-python -m src.llm_tests <project_path> --output docs/runs/llm_tests.json
+python -m src.engineer <project_path> --output docs/runs/software_engineer.json --output-md docs/runs/software_engineer.md
 python -m src.benchmark --executor docker --output docs/runs/benchmark.json
 ```
 

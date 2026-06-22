@@ -21,7 +21,7 @@
 python -m unittest discover -s tests
 python -m compileall src tests examples
 python -m src.engineer examples/review_target --run-sandbox --sandbox-executor docker --output docs/runs/software_engineer.json --output-md docs/runs/software_engineer.md
-python -m src.llm_tests examples/sample_python_project --output docs/runs/llm_tests.json
+python -m src.engineer examples/review_target --output docs/runs/software_engineer.json --output-md docs/runs/software_engineer.md
 ```
 
 Windows PowerShell helper:

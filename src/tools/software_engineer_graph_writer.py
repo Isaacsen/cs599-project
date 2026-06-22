@@ -93,6 +93,7 @@ def format_software_engineer_markdown(result: SoftwareEngineerGraphResult) -> st
         f"| Project | `{result.project_path}` |",
         f"| Status | `{state.get('status', 'unknown')}` |",
         f"| Runtime | `{result.graph_runtime}` |",
+        f"| Repo Scan | `{_status(state.get('scan'))}` |",
         f"| LLM Review Findings | {_count(state.get('llm_review'), 'finding_count')} |",
         f"| Attempted Findings | {len(state.get('attempted_finding_indexes', state.get('processed_finding_indexes', [])))} |",
         f"| Resolved Findings | {len(state.get('resolved_finding_indexes', []))} |",
@@ -113,6 +114,8 @@ def format_software_engineer_markdown(result: SoftwareEngineerGraphResult) -> st
         occurrences[node] = occurrences.get(node, 0) + 1
         lines.append(f"| {index} | `{node}` | {_node_result(state, node, occurrences[node])} |")
 
+    lines.extend(["", "## Repo Scan", ""])
+    lines.extend(_scan_section(state.get("scan")))
     lines.extend(["", "## LLM Review Findings", ""])
     unresolved = _unresolved_finding_indexes(state)
     if unresolved:
@@ -241,7 +244,7 @@ def _coverage_value(report: Any) -> str:
 
 def _node_result(state: dict[str, Any], node: str, occurrence: int = 1) -> str:
     mapping = {
-        "scan": ("scan", lambda: f"{len(state['scan'].source_files)} source file(s)"),
+        "scan": ("scan", lambda: f"{state['scan'].status}, {len(state['scan'].source_files)} source file(s)"),
         "llm_review": ("llm_review", lambda: f"{state['llm_review'].finding_count} finding(s)"),
         "llm_fix_plan": (
             "llm_fix_plan",
@@ -347,6 +350,29 @@ def _sandbox_section(report: Any) -> list[str]:
     if report.diagnosis.suggestions:
         lines.extend(["", "Suggestions:"])
         lines.extend(f"- {item}" for item in report.diagnosis.suggestions)
+    return lines
+
+
+def _scan_section(report: Any) -> list[str]:
+    if report is None:
+        return ["Repository scan was not run."]
+    lines = [
+        f"Status: `{report.status}`",
+        "",
+        "| Item | Count |",
+        "| --- | ---: |",
+        f"| Source files | {len(report.source_files)} |",
+        f"| Test files | {len(report.test_files)} |",
+        f"| Config files | {len(report.config_files or [])} |",
+        f"| Dependency files | {len(report.dependency_files or [])} |",
+        f"| Package roots | {len(report.package_roots or [])} |",
+        f"| Entry points | {len(report.entry_points or [])} |",
+    ]
+    if report.error_summary:
+        lines.extend(["", f"Failure summary: `{_cell(report.error_summary)}`"])
+    if report.issues:
+        lines.extend(["", "Scan issues:"])
+        lines.extend(f"- [{issue.severity}] {_cell(issue.message)}" for issue in report.issues[:6])
     return lines
 
 

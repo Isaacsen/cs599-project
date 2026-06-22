@@ -27,6 +27,8 @@ class LLMTestGenerationReport:
     test_plan: TestPlan
     suite: GeneratedTestSuite | None
     security_check: SecurityCheckResult | None
+    error_summary: str = ""
+    raw_response: str = ""
 
     @property
     def generated_test_count(self) -> int:
@@ -49,6 +51,22 @@ def generate_llm_pytest_tests(
     test_plan = plan_tests(root, scan, max_functions=max_functions)
     prompt = build_test_generation_prompt(root, test_plan)
     target_file = _resolve_project_file(root, test_file_path)
+    if scan.status == "failed":
+        return LLMTestGenerationReport(
+            project_path=str(root),
+            status="skipped_scan_failed",
+            applied=False,
+            provider=active_config.provider,
+            model=active_config.model,
+            api_key_set=active_config.api_key_set,
+            api_key_env=active_config.api_key_env,
+            test_file_path=target_file.relative_to(root).as_posix(),
+            prompt=prompt,
+            test_plan=test_plan,
+            suite=None,
+            security_check=None,
+            error_summary=scan.error_summary,
+        )
 
     if client is None and not active_config.api_key_set and active_config.provider != "ollama":
         return LLMTestGenerationReport(
@@ -67,7 +85,24 @@ def generate_llm_pytest_tests(
         )
 
     active_client = client or OpenAICompatibleLLMClient(active_config)
-    raw_content = active_client.generate(prompt)
+    try:
+        raw_content = active_client.generate(prompt)
+    except Exception as exc:
+        return LLMTestGenerationReport(
+            project_path=str(root),
+            status="failed",
+            applied=False,
+            provider=active_config.provider,
+            model=active_config.model,
+            api_key_set=active_config.api_key_set,
+            api_key_env=active_config.api_key_env,
+            test_file_path=target_file.relative_to(root).as_posix(),
+            prompt=prompt,
+            test_plan=test_plan,
+            suite=None,
+            security_check=None,
+            error_summary=f"{type(exc).__name__}: {exc}",
+        )
     test_content = _extract_python_code(raw_content)
     security_check = check_generated_test_code(test_content)
     if not security_check.passed:
@@ -88,6 +123,7 @@ def generate_llm_pytest_tests(
                 covered_functions=prompt.covered_functions,
             ),
             security_check=security_check,
+            raw_response=raw_content,
         )
 
     if apply_changes:
@@ -111,6 +147,7 @@ def generate_llm_pytest_tests(
             covered_functions=prompt.covered_functions,
         ),
         security_check=security_check,
+        raw_response=raw_content,
     )
 
 

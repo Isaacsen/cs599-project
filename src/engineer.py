@@ -168,7 +168,8 @@ def _print_agent_progress(node: str, state: dict) -> None:
 
 def _progress_status(node: str, state: dict) -> str:
     if node == "scan" and state.get("scan"):
-        return f"{len(state['scan'].source_files)} source file(s)"
+        scan = state["scan"]
+        return f"{scan.status}, {len(scan.source_files)} source file(s)"
     if node == "llm_review" and state.get("llm_review"):
         return f"{state['llm_review'].finding_count} finding(s)"
     if node == "llm_fix_plan" and state.get("llm_fix_plan"):

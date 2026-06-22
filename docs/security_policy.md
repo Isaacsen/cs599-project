@@ -23,7 +23,7 @@ Docker 执行器默认采用以下限制：
 
 ```bash
 docker build -f Dockerfile.sandbox -t software-engineer-agent-python .
-python -m src.main examples/sample_python_project --executor docker
+python -m src.engineer examples/review_target --run-sandbox --sandbox-executor docker
 ```
 
 ## 边界说明

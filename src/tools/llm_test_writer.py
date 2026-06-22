@@ -17,6 +17,7 @@ def llm_test_report_to_dict(report: LLMTestGenerationReport) -> dict[str, Any]:
         "summary": {
             "generated_test_count": report.generated_test_count,
             "security_check_passed": report.security_check.passed if report.security_check else None,
+            "error_summary": report.error_summary,
         },
         "llm_config": {
             "provider": report.provider,

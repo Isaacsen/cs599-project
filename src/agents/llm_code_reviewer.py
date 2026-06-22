@@ -37,6 +37,17 @@ def review_repository_with_llm(
 ) -> LLMCodeReviewReport:
     root = Path(project_path).resolve()
     active_config = config or LLMConfig.from_env()
+    if scan.status == "failed":
+        return LLMCodeReviewReport(
+            project_path=str(root),
+            status="skipped_scan_failed",
+            provider=active_config.provider,
+            model=active_config.model,
+            api_key_set=active_config.api_key_set,
+            api_key_env=active_config.api_key_env,
+            findings=[],
+            raw_response=scan.error_summary,
+        )
     if client is None and not active_config.api_key_set and active_config.provider != "ollama":
         return LLMCodeReviewReport(
             project_path=str(root),
@@ -50,7 +61,19 @@ def review_repository_with_llm(
 
     prompt = _build_review_prompt(root, scan, max_files=max_files)
     active_client = client or OpenAICompatibleLLMClient(active_config)
-    raw_response = active_client.generate(prompt)
+    try:
+        raw_response = active_client.generate(prompt)
+    except Exception as exc:
+        return LLMCodeReviewReport(
+            project_path=str(root),
+            status="failed",
+            provider=active_config.provider,
+            model=active_config.model,
+            api_key_set=active_config.api_key_set,
+            api_key_env=active_config.api_key_env,
+            findings=[],
+            raw_response=f"{type(exc).__name__}: {exc}",
+        )
     findings = _parse_findings(raw_response)
     return LLMCodeReviewReport(
         project_path=str(root),

@@ -5,8 +5,8 @@ from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any
 
-from src.tools.report_writer import report_to_dict
-from src.workflow.pipeline import PipelineReport, run_pipeline
+from src.tools.software_engineer_graph_writer import software_engineer_graph_result_to_dict
+from src.workflow.software_engineer_graph import SoftwareEngineerGraphResult, run_software_engineer_graph
 
 
 @dataclass(frozen=True)
@@ -19,11 +19,14 @@ class BenchmarkCase:
 @dataclass(frozen=True)
 class BenchmarkResult:
     case: BenchmarkCase
-    report: PipelineReport
+    report: SoftwareEngineerGraphResult
 
     @property
     def passed(self) -> bool:
-        return self.report.execution.passed
+        sandbox = self.report.state.get("sandbox_validation")
+        if sandbox is None:
+            return self.report.state.get("status") == "completed"
+        return sandbox.passed
 
 
 @dataclass(frozen=True)
@@ -57,12 +60,13 @@ def run_benchmark(
     results: list[BenchmarkResult] = []
 
     for case in active_cases:
-        report = run_pipeline(
+        report = run_software_engineer_graph(
             case.project_path,
             timeout_seconds=timeout_seconds,
-            executor=executor,
+            run_sandbox=True,
+            sandbox_executor=executor,
             docker_image=docker_image,
-            generate_tests=case.generate_tests,
+            apply_tests=False,
         )
         results.append(BenchmarkResult(case=case, report=report))
 
@@ -73,18 +77,10 @@ def summarize_results(results: list[BenchmarkResult]) -> BenchmarkSummary:
     total_cases = len(results)
     passed_cases = sum(1 for result in results if result.passed)
     failed_cases = total_cases - passed_cases
-    total_pytest_cases = sum(result.report.analysis.total for result in results)
-    generated_test_cases = sum(
-        result.report.generated_suite.test_count
-        for result in results
-        if result.report.generated_suite is not None
-    )
-    planned_test_cases = sum(
-        result.report.test_plan.item_count
-        for result in results
-        if result.report.test_plan is not None
-    )
-    total_duration_seconds = sum(result.report.execution.duration_seconds for result in results)
+    total_pytest_cases = sum(_sandbox_total(result.report) for result in results)
+    generated_test_cases = sum(result.report.generated_llm_test_count for result in results)
+    planned_test_cases = sum(_planned_test_count(result.report) for result in results)
+    total_duration_seconds = sum(_sandbox_duration(result.report) for result in results)
     pass_rate = passed_cases / total_cases if total_cases else 0.0
 
     return BenchmarkSummary(
@@ -105,7 +101,7 @@ def benchmark_to_dict(summary: BenchmarkSummary, results: list[BenchmarkResult])
         "results": [
             {
                 "case": asdict(result.case),
-                "report": report_to_dict(result.report),
+                "report": software_engineer_graph_result_to_dict(result.report),
             }
             for result in results
         ],
@@ -124,6 +120,27 @@ def write_benchmark_report(
         encoding="utf-8",
     )
     return path
+
+
+def _sandbox_total(report: SoftwareEngineerGraphResult) -> int:
+    sandbox = report.state.get("sandbox_validation")
+    if sandbox is None:
+        return 0
+    return sandbox.analysis.total
+
+
+def _sandbox_duration(report: SoftwareEngineerGraphResult) -> float:
+    sandbox = report.state.get("sandbox_validation")
+    if sandbox is None:
+        return 0.0
+    return sandbox.execution.duration_seconds
+
+
+def _planned_test_count(report: SoftwareEngineerGraphResult) -> int:
+    llm_tests = report.state.get("llm_tests")
+    if llm_tests is None:
+        return 0
+    return llm_tests.test_plan.item_count
 
 
 def format_benchmark_summary(summary: BenchmarkSummary) -> str:

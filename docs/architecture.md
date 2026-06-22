@@ -2,22 +2,22 @@
 
 ## 1. 项目定位
 
-Software Engineer Agent 是一个面向 Python 项目的软件工程师 Agent 与权限隔离执行平台。它将软件工程师的常见工作拆成多个可观测 Agent：代码扫描、LLM 语义审查、LLM 修复建议、LLM 测试生成、沙箱验证、失败后回跳重试的修复循环和覆盖反馈。
+Software Engineer Agent 是一个面向 Python 项目的软件工程师 Agent 与权限隔离执行平台。它将软件工程师的常见工作拆成多个可观察节点：真实项目扫描、LLM 代码审查、修复目标规划、LLM 代码修复、LLM 单测生成、沙箱验证、失败回跳修复和覆盖反馈。
 
-当前版本不再包含基于人工规则的 Bug Fix Agent、Patch Review Agent、规则 Review 节点和模板 Unit Test 节点。主流程默认直接使用 LLM Agent。
+当前版本只保留 `src.engineer` 作为主入口。旧的辅助 Pipeline 和独立 review/unit-test/llm-test CLI 已经移除。
 
 ## 2. 总体架构
 
 ```mermaid
 graph TD
-    START["START"] --> SCAN["scan"]
-    SCAN --> LLM_REVIEW["llm_review"]
-    LLM_REVIEW --> LLM_FIX_PLAN["llm_fix_plan"]
-    LLM_FIX_PLAN --> LLM_FIX["llm_fix"]
-    LLM_FIX --> LLM_TESTS["llm_tests"]
-    LLM_TESTS -.-> SANDBOX_VALIDATE
-    LLM_TESTS -.-> COVERAGE_FEEDBACK
-    SANDBOX_VALIDATE --> REPAIR_LOOP["repair_loop"]
+    START["START"] --> SCAN["scan: Repo Scan Agent"]
+    SCAN --> LLM_REVIEW["llm_review: LLM Review Agent"]
+    LLM_REVIEW --> LLM_FIX_PLAN["llm_fix_plan: Fix Planner Agent"]
+    LLM_FIX_PLAN --> LLM_FIX["llm_fix: Code Fix Agent"]
+    LLM_FIX --> LLM_TESTS["llm_tests: Test Writer Agent"]
+    LLM_TESTS -.-> SANDBOX_VALIDATE["sandbox_validate: Sandbox Agent"]
+    LLM_TESTS -.-> COVERAGE_FEEDBACK["coverage_feedback: Coverage Agent"]
+    SANDBOX_VALIDATE --> REPAIR_LOOP["repair_loop: Repair Loop Agent"]
     REPAIR_LOOP -.-> LLM_FIX_PLAN
     REPAIR_LOOP -.-> LLM_TESTS
     REPAIR_LOOP --> COVERAGE_FEEDBACK
@@ -25,11 +25,17 @@ graph TD
     FINISH --> END["END"]
 ```
 
-`docs/runs/software_engineer_agent_flow.png` 是由当前 LangGraph 状态图导出的 PNG，其他文档中的流程图应以该图为准。
+`docs/runs/software_engineer_agent_flow.png` 是由当前 LangGraph 状态图导出的 PNG；其他文档中的流程说明应以该图为准。
 
 ## 3. Agent 编排
 
-主入口是 `python -m src.engineer`，由 `src/workflow/software_engineer_graph.py` 构建 LangGraph `StateGraph`。
+主入口：
+
+```bash
+python -m src.engineer <project_path>
+```
+
+核心流程：
 
 ```text
 scan
@@ -37,50 +43,51 @@ scan
   -> llm_fix_plan
   -> llm_fix
   -> llm_tests
-  -> sandbox_validate 可选
-  -> repair_loop
-      -> llm_fix_plan 可选重试
-      -> llm_tests 可选重试
+  -> sandbox_validate? / coverage_feedback
+  -> repair_loop?
+      -> llm_fix_plan
       -> llm_tests
       -> coverage_feedback
-  -> coverage_feedback
   -> finish
 ```
 
-条件分支：
+关键路由：
+- `scan` 总是产出结构化 `RepositoryScanResult`，即使扫描失败也返回 `status=failed` 和 `error_summary`。
+- `llm_review` 使用真实 LLM 生成 findings；缺少 API key、扫描失败或请求失败时返回结构化状态，不中断 graph。
+- `llm_fix_plan` 从 findings 中选择本轮修复目标，优先 LLM 决策，失败时降级为确定性排序。
+- `llm_fix` 根据选中的 findings 和沙箱反馈生成最小修复建议；显式传入 `--apply-fixes` 时才写回源码。
+- `llm_tests` 使用真实 LLM 生成 pytest；缺少 API key、扫描失败或请求失败时返回结构化状态。
+- `sandbox_validate` 在临时工作区中运行测试；Docker/local 执行异常会转换成结构化失败报告。
+- `repair_loop` 根据沙箱结果决定回到 `llm_fix_plan`、回到 `llm_tests`，或进入 `coverage_feedback`。
 
-- `llm_review` 后：固定进入 `llm_fix_plan`，由 LLM Fix Planner 从 LLM findings 中选择本轮一个或多个修复目标并排序；若 LLM planner 不可用或返回无效结果，则降级为确定性规则排序，再交给 `llm_fix` 生成修复建议；显式传入 `--apply-fixes` 时才写回源码。
-- `llm_fix` 后：生成的完整文件替换会先经过本地 patch safety review，检查语法错误、公共函数删除、危险 import/call；审查失败时不会写回源码。
-- `llm_tests` 后：启用 `--run-sandbox` 时进入 `sandbox_validate`，否则进入 `coverage_feedback`。
-- `sandbox_validate` 后：进入 `repair_loop`。如果失败像代码缺陷，则把当前测试结果和失败诊断回送到 `llm_fix_plan` 重新选择修复顺序，再进入 `llm_fix`；如果失败像生成测试自身的问题，则回到 `llm_tests`；如果测试通过但仍有未处理的 LLM findings，则继续回到 `llm_fix_plan` 处理下一批；如果测试通过且所有 findings 已处理、达到上限或需要人工判断，则进入 `coverage_feedback`。
-- CLI 默认输出 `[agent-stream]` 节点开始与完成事件，并默认开启 `[llm-stream]` token 级模型输出；如需安静输出，可传入 `--no-stream` 和 `--no-llm-token-stream`。终端会提示 token 输出可能包含源码片段。LLM 请求可通过 `--llm-timeout` 和 `--llm-retries` 控制超时与重试。
-- workflow 同时记录 `attempted_finding_indexes` 与 `resolved_finding_indexes`：dry-run 或仅生成建议只算 attempted，只有 `--apply-fixes` 写回且沙箱通过后才算 resolved。
+CLI 默认输出 `[agent-stream]` 节点进度，并默认开启 `[llm-stream]` token 级模型输出。安静模式可传入：
+
+```bash
+--no-stream --no-llm-token-stream
+```
 
 ## 4. 分层设计
 
 ### 4.1 CLI 层
 
-- `src.engineer`：主入口，运行完整 LangGraph 软件工程师 Agent。
-- `src.llm_tests`：独立 LLM 测试生成入口。
-- `src.main`：辅助测试生成与沙箱执行 Pipeline。
-- `src.benchmark`：评估入口。
+- `src.engineer`：唯一主入口，运行完整 Software Engineer Agent LangGraph 工作流。
+- `src.benchmark`：基于当前 LangGraph 工作流运行基准样例。
 
 ### 4.2 Agent 层
 
-- `llm_code_reviewer`：调用真实 LLM 做语义审查。
-- `llm_fix_planner`：优先调用真实 LLM 从 review findings 和沙箱反馈中选择本轮修复目标，并给出修复顺序；失败时降级到规则排序。
-- `llm_code_fixer`：调用真实 LLM 生成源码修复建议，并可在 `--apply-fixes` 下写回。
-- `patch_safety_review`：在写回 LLM 补丁前做本地安全审查，阻止危险调用、语法错误和公共函数删除。
+- `repo_scanner`：扫描真实 Python 项目结构、配置文件、依赖文件、包根、入口点和扫描问题。
+- `llm_code_reviewer`：调用真实 LLM 做语义代码审查。
+- `llm_fix_planner`：选择本轮修复目标并排序。
+- `llm_code_fixer`：调用真实 LLM 生成修复建议，并在写回前做 patch safety review。
 - `llm_test_generator`：调用真实 LLM 生成 pytest。
 - `sandbox_validator`：在 local 或 Docker 后端运行生成测试。
-- `repair_loop`：根据沙箱结果决定回跳 `llm_fix_plan`、回跳 `llm_tests`，或结束循环进入覆盖反馈。
+- `repair_loop`：根据沙箱结果决定下一步。
 - `coverage_feedback`：汇总函数覆盖情况。
 
 ### 4.3 工具层
 
-- `repo_scanner`：扫描 Python 源码结构。
+- `software_engineer_graph_writer`：写出 JSON 和 Markdown 报告。
 - `test_workspace`：创建临时测试工作区。
-- `software_engineer_graph_writer`：写出 JSON 和 Markdown 报告；报告保存 replacement 摘要和 SHA-256，不保存完整替换源码。
 - `prompt_builder`：构建 LLM Prompt。
 - `llm.client`：OpenAI-compatible LLM 调用。
 
@@ -92,34 +99,39 @@ graph LR
     B --> C{"Passed"}
     C -->|No| D["Block and report"]
     C -->|Yes| E["Temporary Workspace"]
-    E --> F["Docker Sandbox"]
+    E --> F["Local or Docker Sandbox"]
     F --> G["No network / limited resources"]
     G --> H["Pytest Result"]
 ```
 
 隔离策略：
-
 1. 生成的测试代码先经过 Security Checker。
-2. 默认 dry-run，不写回目标项目；写回测试必须显式传入 `--apply-tests`。
-3. 测试执行可进入 Docker 沙箱，限制网络、文件系统和资源。
+2. 默认 dry-run，不写回目标项目。
+3. 只有显式传入 `--apply-fixes` 或 `--apply-tests` 才会写回。
+4. 沙箱验证在临时工作区中运行，降低对原项目的影响。
 
 ## 5. 可观测性
 
-主 Agent 输出：
-
+主要产物：
 - `docs/runs/software_engineer.json`
 - `docs/runs/software_engineer.md`
+- `docs/runs/software_engineer_agent_flow.png`
+
+报告记录：
 - `node_trace`
 - `graph_runtime`
-- 各 Agent 的结构化报告
+- 每个 Agent 的结构化状态
+- attempted / resolved / unresolved findings
+- 沙箱执行结果与失败诊断
+- 覆盖反馈
 
 ## 6. 课程要求映射
 
 | 课程要求 | 架构对应 |
 | --- | --- |
 | SDD 规格驱动开发 | `docs/specs/` |
-| 工具调用 | Scanner、Security Checker、Sandbox Executor、Report Writer、LLM Client |
-| 状态管理与多步骤推理 | LangGraph StateGraph |
-| 多智能体协作 | LLM Review、LLM Fix、LLM Test、Sandbox、Repair、Coverage |
+| 工具调用 | Repo Scan Agent、Security Checker、Sandbox Executor、Report Writer、LLM Client |
+| 状态管理与多步推理 | LangGraph StateGraph |
+| 多智能体协作 | Scan、Review、Fix Plan、Fix、Test、Sandbox、Repair、Coverage |
 | 可观测性与评估 | JSON / Markdown artifacts、Benchmark |
 | 权限隔离 | Docker sandbox、临时工作区、Security Checker、环境变量密钥管理 |

@@ -1,17 +1,8 @@
-﻿import json
-import tempfile
 import unittest
-from pathlib import Path
 
 from src.agents.failure_diagnoser import diagnose_failure
 from src.agents.result_analyzer import analyze_pytest_result
-from src.agents.security_checker import check_generated_test_code
-from src.agents.test_generator import GeneratedTestSuite
-from src.agents.test_planner import plan_tests
 from src.sandbox.local_executor import TestExecutionResult
-from src.tools.repo_scanner import scan_repository
-from src.tools.report_writer import write_json_report
-from src.workflow.pipeline import PipelineReport
 
 
 class ResultAnalyzerTest(unittest.TestCase):
@@ -50,7 +41,7 @@ class ResultAnalyzerTest(unittest.TestCase):
         self.assertEqual(1, summary.warnings)
         self.assertEqual("failed", summary.conclusion)
 
-    def test_writes_json_report(self) -> None:
+    def test_diagnoses_successful_execution(self) -> None:
         execution = TestExecutionResult(
             passed=True,
             exit_code=0,
@@ -59,34 +50,11 @@ class ResultAnalyzerTest(unittest.TestCase):
             duration_seconds=0.2,
             timed_out=False,
         )
-        report = PipelineReport(
-            scan=scan_repository("examples/sample_python_project"),
-            execution=execution,
-            analysis=analyze_pytest_result(execution),
-            diagnosis=diagnose_failure(execution, analyze_pytest_result(execution)),
-            security_check=check_generated_test_code("def test_sample():\n    assert True\n"),
-            test_plan=plan_tests(
-                "examples/sample_python_project",
-                scan_repository("examples/sample_python_project"),
-            ),
-            generated_suite=GeneratedTestSuite(
-                test_file_name="test_software_engineer_generated.py",
-                content="def test_sample():\n    assert True\n",
-                covered_functions=["calculator.add", "calculator.divide"],
-            ),
-            generated_tests_enabled=True,
-        )
-        with tempfile.TemporaryDirectory() as temp_dir:
-            report_path = write_json_report(report, Path(temp_dir) / "report.json")
-            data = json.loads(report_path.read_text(encoding="utf-8"))
+        analysis = analyze_pytest_result(execution)
+        diagnosis = diagnose_failure(execution, analysis)
 
-        self.assertEqual("Python", data["scan"]["language"])
-        self.assertTrue(data["generated_tests_enabled"])
-        self.assertEqual(2, len(data["test_plan"]["items"]))
-        self.assertEqual(2, len(data["generated_suite"]["covered_functions"]))
-        self.assertIn("analysis", data)
-        self.assertEqual("no_issue", data["diagnosis"]["status"])
-        self.assertTrue(data["security_check"]["passed"])
+        self.assertEqual("no_issue", diagnosis.status)
+        self.assertEqual([], diagnosis.failure_types)
 
     def test_timeout_conclusion(self) -> None:
         execution = TestExecutionResult(

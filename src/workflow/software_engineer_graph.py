@@ -11,7 +11,7 @@ from src.agents.llm_fix_planner import LLMFixPlan, plan_llm_fixes
 from src.agents.llm_test_generator import LLMTestGenerationReport, generate_llm_pytest_tests
 from src.agents.repair_loop import RepairLoopReport, plan_repair_iteration
 from src.agents.sandbox_validator import SandboxValidationReport, validate_generated_tests_in_sandbox
-from src.tools.repo_scanner import RepositoryScanResult, scan_repository
+from src.agents.repo_scanner import RepositoryScanResult, scan_repository_agent
 
 try:
     from langgraph.graph import END, START, StateGraph
@@ -167,7 +167,7 @@ def build_software_engineer_graph() -> Any:
 
 
 def scan_node(state: SoftwareEngineerGraphState) -> SoftwareEngineerGraphState:
-    scan = scan_repository(state["project_path"])
+    scan = scan_repository_agent(state["project_path"])
     return {
         "scan": scan,
         "graph_runtime": "langgraph" if LANGGRAPH_AVAILABLE else "fallback",
@@ -215,7 +215,7 @@ def llm_fix_node(state: SoftwareEngineerGraphState) -> SoftwareEngineerGraphStat
         "node_trace": [*state.get("node_trace", []), "llm_fix"],
     }
     if llm_fix.applied:
-        updates["scan"] = scan_repository(state["project_path"])
+        updates["scan"] = scan_repository_agent(state["project_path"])
     return updates
 
 
@@ -345,7 +345,8 @@ def _format_timeline(state: SoftwareEngineerGraphState, node_trace: list[str]) -
 
 def _node_status(state: SoftwareEngineerGraphState, node: str, occurrence: int = 1) -> str:
     if node == "scan" and "scan" in state:
-        return f"{len(state['scan'].source_files)} source file(s)"
+        scan = state["scan"]
+        return f"{scan.status}, {len(scan.source_files)} source file(s)"
     if node == "llm_review" and "llm_review" in state:
         return f"{state['llm_review'].finding_count} finding(s)"
     if node == "llm_fix_plan" and "llm_fix_plan" in state:

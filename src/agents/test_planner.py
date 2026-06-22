@@ -32,6 +32,8 @@ class TestPlanItem:
 
 @dataclass(frozen=True)
 class TestPlan:
+    __test__ = False
+
     items: list[TestPlanItem]
 
     @property

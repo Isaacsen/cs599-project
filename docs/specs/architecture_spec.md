@@ -4,7 +4,7 @@
 
 Software Engineer Agent 采用分层架构：
 
-- CLI 层：`src.engineer`、`src.llm_tests`、`src.main`、`src.benchmark`。
+- CLI 层：`src.engineer`、`src.benchmark`。
 - Workflow 层：`src/workflow/software_engineer_graph.py` 中的 LangGraph `StateGraph`。
 - Agent 层：LLM 审查、LLM 修复建议、LLM 测试生成、沙箱验证、失败后回跳重试的修复循环和覆盖反馈。
 - Tool 层：仓库扫描、临时工作区、报告写出、Prompt 构建和 LLM Client。

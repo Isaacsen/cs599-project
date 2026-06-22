@@ -29,12 +29,6 @@ if ($LASTEXITCODE -ne 0) {
     throw "Software engineer agent failed."
 }
 
-Write-Host "`n[Software Engineer Agent Final Verify] Generate LLM test report with configured provider"
-& $Python -m src.llm_tests examples/sample_python_project --output docs/runs/llm_tests.json
-if ($LASTEXITCODE -ne 0) {
-    throw "LLM test generator failed."
-}
-
 Write-Host "`n[Software Engineer Agent Final Verify] Export final report PDF"
 & $Python scripts/export_report_pdf.py
 if ($LASTEXITCODE -ne 0) {
