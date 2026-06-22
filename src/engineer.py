@@ -1,6 +1,7 @@
 ﻿from __future__ import annotations
 
 import argparse
+import json
 import os
 import sys
 
@@ -168,8 +169,7 @@ def _print_agent_progress(node: str, state: dict) -> None:
 
 def _progress_status(node: str, state: dict) -> str:
     if node == "scan" and state.get("scan"):
-        scan = state["scan"]
-        return f"{scan.status}, {len(scan.source_files)} source file(s)"
+        return json.dumps(_scan_progress_payload(state["scan"]), ensure_ascii=False, separators=(",", ":"))
     if node == "llm_review" and state.get("llm_review"):
         return f"{state['llm_review'].finding_count} finding(s)"
     if node == "llm_fix_plan" and state.get("llm_fix_plan"):
@@ -191,6 +191,27 @@ def _progress_status(node: str, state: dict) -> str:
     if node == "finish":
         return state.get("status", "unknown")
     return "completed"
+
+
+def _scan_progress_payload(scan: object) -> dict:
+    return {
+        "status": getattr(scan, "status", "unknown"),
+        "source_files": len(getattr(scan, "source_files", []) or []),
+        "test_files": len(getattr(scan, "test_files", []) or []),
+        "config_files": len(getattr(scan, "config_files", []) or []),
+        "dependency_files": len(getattr(scan, "dependency_files", []) or []),
+        "package_roots": len(getattr(scan, "package_roots", []) or []),
+        "entry_points": len(getattr(scan, "entry_points", []) or []),
+        "issues": [
+            {
+                "severity": getattr(issue, "severity", "unknown"),
+                "message": getattr(issue, "message", ""),
+                "path": getattr(issue, "path", ""),
+            }
+            for issue in (getattr(scan, "issues", []) or [])[:3]
+        ],
+        "error_summary": getattr(scan, "error_summary", ""),
+    }
 
 
 if __name__ == "__main__":

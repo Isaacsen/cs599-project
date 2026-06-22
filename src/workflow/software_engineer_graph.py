@@ -345,8 +345,7 @@ def _format_timeline(state: SoftwareEngineerGraphState, node_trace: list[str]) -
 
 def _node_status(state: SoftwareEngineerGraphState, node: str, occurrence: int = 1) -> str:
     if node == "scan" and "scan" in state:
-        scan = state["scan"]
-        return f"{scan.status}, {len(scan.source_files)} source file(s)"
+        return _scan_status_summary(state["scan"])
     if node == "llm_review" and "llm_review" in state:
         return f"{state['llm_review'].finding_count} finding(s)"
     if node == "llm_fix_plan" and "llm_fix_plan" in state:
@@ -373,6 +372,9 @@ def _node_status(state: SoftwareEngineerGraphState, node: str, occurrence: int =
 
 def _format_highlights(state: SoftwareEngineerGraphState) -> list[str]:
     highlights: list[str] = []
+    scan = state.get("scan")
+    if scan:
+        highlights.append(f"  - Repo scan: {_scan_status_summary(scan)}")
     llm_review = state.get("llm_review")
     if llm_review and llm_review.findings:
         first = llm_review.findings[0]
@@ -428,6 +430,15 @@ def _coverage_status(state: SoftwareEngineerGraphState) -> str:
     if report is None:
         return "not_run"
     return f"{report.coverage_ratio:.0%}"
+
+
+def _scan_status_summary(scan: RepositoryScanResult) -> str:
+    return (
+        f"{scan.status}; source={len(scan.source_files)}, tests={len(scan.test_files)}, "
+        f"config={len(scan.config_files or [])}, deps={len(scan.dependency_files or [])}, "
+        f"packages={len(scan.package_roots or [])}, entrypoints={len(scan.entry_points or [])}, "
+        f"issues={len(scan.issues or [])}"
+    )
 
 
 def _route_after_repair_loop(state: SoftwareEngineerGraphState) -> str:

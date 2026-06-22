@@ -244,7 +244,7 @@ def _coverage_value(report: Any) -> str:
 
 def _node_result(state: dict[str, Any], node: str, occurrence: int = 1) -> str:
     mapping = {
-        "scan": ("scan", lambda: f"{state['scan'].status}, {len(state['scan'].source_files)} source file(s)"),
+        "scan": ("scan", lambda: _scan_timeline_result(state["scan"])),
         "llm_review": ("llm_review", lambda: f"{state['llm_review'].finding_count} finding(s)"),
         "llm_fix_plan": (
             "llm_fix_plan",
@@ -374,6 +374,15 @@ def _scan_section(report: Any) -> list[str]:
         lines.extend(["", "Scan issues:"])
         lines.extend(f"- [{issue.severity}] {_cell(issue.message)}" for issue in report.issues[:6])
     return lines
+
+
+def _scan_timeline_result(report: Any) -> str:
+    return (
+        f"{report.status}; source={len(report.source_files)}, tests={len(report.test_files)}, "
+        f"config={len(report.config_files or [])}, deps={len(report.dependency_files or [])}, "
+        f"packages={len(report.package_roots or [])}, entrypoints={len(report.entry_points or [])}, "
+        f"issues={len(report.issues or [])}"
+    )
 
 
 def _fix_section(report: Any) -> list[str]:
