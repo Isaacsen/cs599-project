@@ -1,6 +1,7 @@
 ﻿from __future__ import annotations
 
 import re
+from html import escape
 from pathlib import Path
 
 from reportlab.lib import colors
@@ -131,7 +132,7 @@ def build_styles() -> dict[str, ParagraphStyle]:
         "code": ParagraphStyle(
             "ReportCode",
             parent=normal,
-            fontName="Courier",
+            fontName="ReportFont",
             fontSize=8,
             leading=10,
             textColor=colors.HexColor("#1f2933"),
@@ -243,9 +244,10 @@ def build_table(table_lines: list[str], styles: dict[str, ParagraphStyle]) -> Ta
 
 
 def clean_inline(text: str) -> str:
-    text = re.sub(r"`([^`]+)`", r"<font name='Courier'>\1</font>", text)
+    text = escape(text)
+    text = re.sub(r"`([^`]+)`", r"<font name='ReportFont'>\1</font>", text)
     text = re.sub(r"\*\*([^*]+)\*\*", r"<b>\1</b>", text)
-    return text.replace("&", "&amp;").replace("<font", "<font").replace("</font>", "</font>")
+    return text
 
 
 def _is_table_start(lines: list[str], index: int) -> bool:

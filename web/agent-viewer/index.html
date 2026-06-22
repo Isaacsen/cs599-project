@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Software Engineer Agent Viewer</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <div>
+        <h1>Software Engineer Agent</h1>
+        <p id="run-summary">Loading latest run...</p>
+      </div>
+      <div class="actions">
+        <button id="reload" type="button">Refresh</button>
+        <a class="button" href="/docs/runs/software_engineer.md">Markdown Report</a>
+        <a class="button" href="/docs/runs/software_engineer.json">JSON Report</a>
+      </div>
+    </header>
+
+    <main class="layout">
+      <section class="panel graph-panel">
+        <div class="panel-title">
+          <h2>Agent 状态图</h2>
+          <span id="active-node">Idle</span>
+        </div>
+        <div id="agent-graph" class="agent-graph" aria-label="Agent workflow graph"></div>
+      </section>
+
+      <section class="panel timeline-panel">
+        <div class="panel-title">
+          <h2>Timeline</h2>
+          <span id="event-count">0 events</span>
+        </div>
+        <ol id="timeline" class="timeline"></ol>
+      </section>
+
+      <section class="panel rounds-panel">
+        <div class="panel-title">
+          <h2>每轮中间输出</h2>
+          <span id="round-count">0 rounds</span>
+        </div>
+        <div id="rounds" class="rounds"></div>
+      </section>
+    </main>
+
+    <script src="./app.js"></script>
+  </body>
+</html>

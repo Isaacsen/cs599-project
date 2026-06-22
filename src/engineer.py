@@ -9,6 +9,7 @@ from src.tools.software_engineer_graph_writer import (
     write_software_engineer_graph_result,
     write_software_engineer_markdown,
 )
+from src.tools.agent_event_log import AgentEventLog
 from src.workflow.software_engineer_graph import (
     format_software_engineer_graph_result,
     run_software_engineer_graph,
@@ -27,6 +28,11 @@ def build_parser() -> argparse.ArgumentParser:
         "--output-md",
         default="docs/runs/software_engineer.md",
         help="Path to write the human-readable Markdown software engineer report.",
+    )
+    parser.add_argument(
+        "--events-output",
+        default="docs/runs/software_engineer_events.jsonl",
+        help="Path to write structured Agent event JSONL for the Web viewer.",
     )
     parser.add_argument(
         "--apply-tests",
@@ -122,6 +128,7 @@ def main() -> int:
                 "[llm-stream-warning] token-level output may include source snippets or model-generated code.",
                 flush=True,
             )
+        event_log = AgentEventLog(args.events_output)
         report = run_software_engineer_graph(
             args.project_path,
             apply_fixes=args.apply_fixes,
@@ -133,10 +140,11 @@ def main() -> int:
             repair_iterations=args.repair_iterations,
             llm_test_file_path=args.llm_test_file,
             max_functions=args.max_functions,
-            progress_callback=None if args.no_stream else _print_agent_progress,
+            progress_callback=_build_progress_callback(event_log, emit_console=not args.no_stream),
         )
         output_path = write_software_engineer_graph_result(report, args.output)
         markdown_path = write_software_engineer_markdown(report, args.output_md)
+        events_path = event_log.write()
     except Exception as exc:
         print(f"Error: {exc}", file=sys.stderr)
         return 2
@@ -144,7 +152,24 @@ def main() -> int:
     print(format_software_engineer_graph_result(report))
     print(f"\nSoftware Engineer Report: {output_path}")
     print(f"Readable Report: {markdown_path}")
+    print(f"Agent Event Log: {events_path}")
     return 0
+
+
+def _build_progress_callback(event_log: AgentEventLog, emit_console: bool = True):
+    def _callback(node: str, state: dict) -> None:
+        if emit_console:
+            _print_agent_progress(node, state)
+        is_start = node.endswith(":start")
+        base_node = node.removesuffix(":start")
+        event_log.append(
+            "node_start" if is_start else "node_end",
+            base_node,
+            "starting" if is_start else _progress_status(base_node, state),
+            _event_payload(base_node, state),
+        )
+
+    return _callback
 
 
 def _print_agent_progress(node: str, state: dict) -> None:
@@ -191,6 +216,82 @@ def _progress_status(node: str, state: dict) -> str:
     if node == "finish":
         return state.get("status", "unknown")
     return "completed"
+
+
+def _event_payload(node: str, state: dict) -> dict:
+    payload = {
+        "node_trace": list(state.get("node_trace", [])),
+        "status": state.get("status", "running"),
+        "repair_iteration": state.get("repair_iteration", 0),
+        "finding_round": state.get("finding_round", 0),
+    }
+    if node == "scan" and state.get("scan"):
+        payload["scan"] = _scan_progress_payload(state["scan"])
+    if node == "llm_review" and state.get("llm_review"):
+        report = state["llm_review"]
+        payload["llm_review"] = {
+            "status": report.status,
+            "finding_count": report.finding_count,
+            "provider": report.provider,
+            "model": report.model,
+        }
+    if node == "llm_fix_plan" and state.get("llm_fix_plan"):
+        plan = state["llm_fix_plan"]
+        payload["llm_fix_plan"] = {
+            "status": plan.status,
+            "target_count": plan.target_count,
+            "remaining_count": plan.remaining_count,
+            "planner": plan.planner,
+            "targets": [
+                {
+                    "finding_index": target.finding_index,
+                    "file_path": target.file_path,
+                    "line": target.line,
+                    "severity": target.severity,
+                    "rule": target.rule,
+                }
+                for target in plan.targets
+            ],
+        }
+    if node == "llm_fix" and state.get("llm_fix"):
+        report = state["llm_fix"]
+        payload["llm_fix"] = {
+            "status": report.status,
+            "fix_count": report.fix_count,
+            "applied": report.applied,
+        }
+    if node == "llm_tests" and state.get("llm_tests"):
+        report = state["llm_tests"]
+        payload["llm_tests"] = {
+            "status": report.status,
+            "generated_test_count": report.generated_test_count,
+        }
+    if node == "sandbox_validate" and state.get("sandbox_validation"):
+        report = state["sandbox_validation"]
+        payload["sandbox_validation"] = {
+            "status": report.status,
+            "executor": report.executor,
+            "passed": report.analysis.passed,
+            "total": report.analysis.total,
+            "failed": report.analysis.failed,
+            "errors": report.analysis.errors,
+        }
+    if node == "repair_loop" and state.get("repair_loop"):
+        report = state["repair_loop"]
+        payload["repair_loop"] = {
+            "status": report.status,
+            "iteration": report.iteration,
+            "next_step": report.next_step,
+            "actions": list(report.actions),
+        }
+    if node == "coverage_feedback" and state.get("coverage_feedback"):
+        report = state["coverage_feedback"]
+        payload["coverage_feedback"] = {
+            "coverage_ratio": report.coverage_ratio,
+            "covered_functions": list(report.covered_functions),
+            "missing_functions": list(report.missing_functions),
+        }
+    return payload
 
 
 def _scan_progress_payload(scan: object) -> dict:
