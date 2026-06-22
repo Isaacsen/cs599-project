@@ -4,7 +4,7 @@
 
 Software Engineer Agent 是一个面向 Python 项目的 LangGraph 多 Agent 软件工程工作流。系统以目标 Python 仓库为输入，完成结构化仓库扫描、真实 LLM 代码审查、修复目标规划、LLM 修复建议、LLM 单测生成、Local / Docker 沙箱验证、失败回跳和覆盖反馈，并输出可审计的 JSON / Markdown 运行报告。
 
-本项目选择课程方向一：Agentic AI 原生开发。当前唯一主入口是 `src.engineer`，评估入口是 `src.benchmark`。旧的辅助 Pipeline、独立 review/unit-test/llm-test CLI 和独立 `docs/specs/` 文件已经移除；Product Spec / Architecture Spec / API Spec 已内嵌到 `docs/CS599_大作业报告.md` 第二章。
+本项目选择课程方向一：Agentic AI 原生开发。当前唯一主入口是 `src.engineer`，评估入口是 `src.benchmark`。
 
 ## 技术栈
 
