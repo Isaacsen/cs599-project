@@ -110,9 +110,10 @@ def _fake_llm_fix(
 ):
     root = Path(project_path).resolve()
     target_count = fix_plan.target_count if fix_plan else 0
+    status = "fixed" if apply_changes else "planned"
     return LLMCodeFixReport(
         project_path=str(root),
-        status="planned",
+        status=status,
         applied=apply_changes,
         provider="dashscope",
         model="glm-5.2",
@@ -123,7 +124,7 @@ def _fake_llm_fix(
                 file_path="risky_module.py",
                 summary=f"Apply {target_count} planned fix target(s).",
                 replacement_content=(root / "risky_module.py").read_text(encoding="utf-8"),
-                applied=False,
+                applied=apply_changes,
             )
         ],
         raw_response='{"fixes":[]}',
@@ -262,6 +263,8 @@ class SoftwareEngineerGraphTest(unittest.TestCase):
         self.assertNotIn("patch_review", data)
         self.assertIn("coverage_feedback", data)
         self.assertNotIn("unit-test-secret", serialized)
+        self.assertNotIn("replacement_content", serialized)
+        self.assertIn("replacement_sha256", serialized)
 
     def test_runs_sandbox_validation_node_with_local_executor(self) -> None:
         with (
@@ -281,6 +284,23 @@ class SoftwareEngineerGraphTest(unittest.TestCase):
         self.assertEqual("complete", result.state["repair_loop"].status)
         self.assertEqual([0, 1, 2], result.state["attempted_finding_indexes"])
         self.assertEqual([], result.state["resolved_finding_indexes"])
+
+    def test_apply_fixes_marks_findings_resolved_after_sandbox_passes(self) -> None:
+        with (
+            patch("src.workflow.software_engineer_graph.review_repository_with_llm", side_effect=_fake_llm_review),
+            patch("src.workflow.software_engineer_graph.fix_code_with_llm", side_effect=_fake_llm_fix),
+            patch("src.workflow.software_engineer_graph.generate_llm_pytest_tests", side_effect=_fake_llm_generation),
+        ):
+            result = run_software_engineer_graph(
+                self.project_path,
+                apply_fixes=True,
+                run_sandbox=True,
+                sandbox_executor="local",
+            )
+
+        self.assertEqual("completed", result.state["status"])
+        self.assertEqual([0, 1, 2], result.state["attempted_finding_indexes"])
+        self.assertEqual([0, 1, 2], result.state["resolved_finding_indexes"])
 
     def test_repair_loop_retries_llm_tests_after_sandbox_failure(self) -> None:
         sandbox_reports = [

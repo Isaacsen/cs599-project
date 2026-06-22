@@ -53,6 +53,7 @@ class SoftwareEngineerGraphState(TypedDict, total=False):
     attempted_finding_indexes: list[int]
     resolved_finding_indexes: list[int]
     processed_finding_indexes: list[int]
+    finding_round: int
     coverage_feedback: CoverageFeedbackReport
     node_trace: list[str]
 
@@ -107,6 +108,7 @@ def run_software_engineer_graph(
         "attempted_finding_indexes": [],
         "resolved_finding_indexes": [],
         "processed_finding_indexes": [],
+        "finding_round": 0,
         "node_trace": [],
     }
 
@@ -182,6 +184,7 @@ def llm_review_node(state: SoftwareEngineerGraphState) -> SoftwareEngineerGraphS
 
 
 def llm_fix_plan_node(state: SoftwareEngineerGraphState) -> SoftwareEngineerGraphState:
+    finding_round = state.get("finding_round", 0) + 1
     llm_fix_plan = plan_llm_fixes(
         state.get("llm_review"),
         sandbox_validation=state.get("sandbox_validation"),
@@ -190,6 +193,7 @@ def llm_fix_plan_node(state: SoftwareEngineerGraphState) -> SoftwareEngineerGrap
     return {
         "llm_fix_plan": llm_fix_plan,
         "llm_fix_plan_history": [*state.get("llm_fix_plan_history", []), llm_fix_plan],
+        "finding_round": finding_round,
         "node_trace": [*state.get("node_trace", []), "llm_fix_plan"],
     }
 
@@ -346,7 +350,7 @@ def _node_status(state: SoftwareEngineerGraphState, node: str, occurrence: int =
         return f"{state['llm_review'].finding_count} finding(s)"
     if node == "llm_fix_plan" and "llm_fix_plan" in state:
         plan = _history_item(state.get("llm_fix_plan_history", []), occurrence) or state["llm_fix_plan"]
-        return f"{plan.target_count} target(s), {plan.status}, remaining={plan.remaining_count}"
+        return f"round {occurrence}, {plan.target_count} target(s), {plan.status}, remaining={plan.remaining_count}"
     if node == "llm_fix" and "llm_fix" in state:
         report = _history_item(state.get("llm_fix_history", []), occurrence) or state["llm_fix"]
         return f"{report.fix_count} fix(es), {report.status}"

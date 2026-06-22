@@ -112,6 +112,10 @@ def main() -> int:
             os.environ["LLM_MAX_RETRIES"] = str(args.llm_retries)
         if args.stream_llm_tokens:
             os.environ["LLM_STREAM_STDOUT"] = "1"
+            print(
+                "[llm-stream-warning] token-level output may include source snippets or model-generated code.",
+                flush=True,
+            )
         report = run_software_engineer_graph(
             args.project_path,
             apply_fixes=args.apply_fixes,

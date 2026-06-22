@@ -50,9 +50,10 @@ scan
 条件分支：
 
 - `llm_review` 后：固定进入 `llm_fix_plan`，由 LLM Fix Planner 从 LLM findings 中选择本轮一个或多个修复目标并排序；若 LLM planner 不可用或返回无效结果，则降级为确定性规则排序，再交给 `llm_fix` 生成修复建议；显式传入 `--apply-fixes` 时才写回源码。
+- `llm_fix` 后：生成的完整文件替换会先经过本地 patch safety review，检查语法错误、公共函数删除、危险 import/call；审查失败时不会写回源码。
 - `llm_tests` 后：启用 `--run-sandbox` 时进入 `sandbox_validate`，否则进入 `coverage_feedback`。
 - `sandbox_validate` 后：进入 `repair_loop`。如果失败像代码缺陷，则把当前测试结果和失败诊断回送到 `llm_fix_plan` 重新选择修复顺序，再进入 `llm_fix`；如果失败像生成测试自身的问题，则回到 `llm_tests`；如果测试通过但仍有未处理的 LLM findings，则继续回到 `llm_fix_plan` 处理下一批；如果测试通过且所有 findings 已处理、达到上限或需要人工判断，则进入 `coverage_feedback`。
-- CLI 默认输出 `[agent-stream]` 节点开始与完成事件；如需安静输出，可传入 `--no-stream`。需要查看模型实时文本时可传入 `--stream-llm-tokens`。LLM 请求可通过 `--llm-timeout` 和 `--llm-retries` 控制超时与重试。
+- CLI 默认输出 `[agent-stream]` 节点开始与完成事件；如需安静输出，可传入 `--no-stream`。需要查看模型实时文本时可传入 `--stream-llm-tokens`，终端会提示该输出可能包含源码片段。LLM 请求可通过 `--llm-timeout` 和 `--llm-retries` 控制超时与重试。
 - workflow 同时记录 `attempted_finding_indexes` 与 `resolved_finding_indexes`：dry-run 或仅生成建议只算 attempted，只有 `--apply-fixes` 写回且沙箱通过后才算 resolved。
 
 ## 4. 分层设计
@@ -69,6 +70,7 @@ scan
 - `llm_code_reviewer`：调用真实 LLM 做语义审查。
 - `llm_fix_planner`：优先调用真实 LLM 从 review findings 和沙箱反馈中选择本轮修复目标，并给出修复顺序；失败时降级到规则排序。
 - `llm_code_fixer`：调用真实 LLM 生成源码修复建议，并可在 `--apply-fixes` 下写回。
+- `patch_safety_review`：在写回 LLM 补丁前做本地安全审查，阻止危险调用、语法错误和公共函数删除。
 - `llm_test_generator`：调用真实 LLM 生成 pytest。
 - `sandbox_validator`：在 local 或 Docker 后端运行生成测试。
 - `repair_loop`：根据沙箱结果决定回跳 `llm_fix_plan`、回跳 `llm_tests`，或结束循环进入覆盖反馈。
@@ -78,7 +80,7 @@ scan
 
 - `repo_scanner`：扫描 Python 源码结构。
 - `test_workspace`：创建临时测试工作区。
-- `software_engineer_graph_writer`：写出 JSON 和 Markdown 报告。
+- `software_engineer_graph_writer`：写出 JSON 和 Markdown 报告；报告保存 replacement 摘要和 SHA-256，不保存完整替换源码。
 - `prompt_builder`：构建 LLM Prompt。
 - `llm.client`：OpenAI-compatible LLM 调用。
 

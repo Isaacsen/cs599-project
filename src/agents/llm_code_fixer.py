@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import json
 import re
+import ast
+import hashlib
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -27,6 +29,16 @@ class LLMCodeFix:
 
 
 @dataclass(frozen=True)
+class PatchSafetyReview:
+    passed: bool
+    violations: list[str]
+
+    @property
+    def violation_count(self) -> int:
+        return len(self.violations)
+
+
+@dataclass(frozen=True)
 class LLMCodeFixReport:
     project_path: str
     status: str
@@ -36,6 +48,7 @@ class LLMCodeFixReport:
     api_key_set: bool
     api_key_env: str
     fixes: list[LLMCodeFix]
+    patch_review: PatchSafetyReview | None = None
     raw_response: str = ""
 
     @property
@@ -85,10 +98,24 @@ def fix_code_with_llm(
             fixes=[],
             raw_response=str(exc),
         )
-    fixes = _parse_fixes(raw_response, root, scan, apply_changes)
-    status = "fixed" if apply_changes and fixes else "planned"
+    fixes = _parse_fixes(raw_response, root, scan)
+    patch_review = _review_patch_safety(root, fixes)
+    if apply_changes and patch_review.passed:
+        _apply_fixes(root, fixes)
+        fixes = [
+            LLMCodeFix(
+                file_path=fix.file_path,
+                summary=fix.summary,
+                replacement_content=fix.replacement_content,
+                applied=True,
+            )
+            for fix in fixes
+        ]
+    status = "fixed" if apply_changes and fixes and patch_review.passed else "planned"
     if not fixes:
         status = "no_fixes"
+    if fixes and not patch_review.passed:
+        status = "patch_review_failed"
     return LLMCodeFixReport(
         project_path=str(root),
         status=status,
@@ -98,6 +125,7 @@ def fix_code_with_llm(
         api_key_set=active_config.api_key_set,
         api_key_env=active_config.api_key_env,
         fixes=fixes,
+        patch_review=patch_review,
         raw_response=raw_response,
     )
 
@@ -204,7 +232,7 @@ def _collect_source_context(root: Path, scan: RepositoryScanResult, max_files: i
     return combined
 
 
-def _parse_fixes(raw_response: str, root: Path, scan: RepositoryScanResult, apply_changes: bool) -> list[LLMCodeFix]:
+def _parse_fixes(raw_response: str, root: Path, scan: RepositoryScanResult) -> list[LLMCodeFix]:
     payload_text = _extract_json(raw_response)
     try:
         payload = json.loads(payload_text)
@@ -224,19 +252,80 @@ def _parse_fixes(raw_response: str, root: Path, scan: RepositoryScanResult, appl
         target = (root / relative_file).resolve()
         if not _is_relative_to(target, root):
             continue
-        applied = False
-        if apply_changes:
-            target.write_text(replacement.rstrip() + "\n", encoding="utf-8")
-            applied = True
         fixes.append(
             LLMCodeFix(
                 file_path=relative_file,
                 summary=summary,
                 replacement_content=replacement,
-                applied=applied,
+                applied=False,
             )
         )
     return fixes
+
+
+def _review_patch_safety(root: Path, fixes: list[LLMCodeFix]) -> PatchSafetyReview:
+    violations: list[str] = []
+    for fix in fixes:
+        original_path = root / fix.file_path
+        original = original_path.read_text(encoding="utf-8") if original_path.exists() else ""
+        replacement = fix.replacement_content
+        try:
+            original_tree = ast.parse(original or "\n")
+            replacement_tree = ast.parse(replacement)
+        except SyntaxError as exc:
+            violations.append(f"{fix.file_path}: replacement has syntax error: {exc.msg}")
+            continue
+        missing_functions = _public_functions(original_tree) - _public_functions(replacement_tree)
+        for function_name in sorted(missing_functions):
+            violations.append(f"{fix.file_path}: public function removed: {function_name}")
+        violations.extend(f"{fix.file_path}: {item}" for item in _dangerous_constructs(replacement_tree))
+    return PatchSafetyReview(passed=not violations, violations=violations[:20])
+
+
+def _apply_fixes(root: Path, fixes: list[LLMCodeFix]) -> None:
+    for fix in fixes:
+        target = (root / fix.file_path).resolve()
+        if _is_relative_to(target, root):
+            target.write_text(fix.replacement_content.rstrip() + "\n", encoding="utf-8")
+
+
+def _public_functions(tree: ast.AST) -> set[str]:
+    return {
+        node.name
+        for node in ast.walk(tree)
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) and not node.name.startswith("_")
+    }
+
+
+def _dangerous_constructs(tree: ast.AST) -> list[str]:
+    violations: list[str] = []
+    dangerous_imports = {"subprocess", "socket", "shutil"}
+    dangerous_calls = {"eval", "exec", "compile", "__import__"}
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            for alias in node.names:
+                if alias.name.split(".")[0] in dangerous_imports:
+                    violations.append(f"dangerous import: {alias.name}")
+        elif isinstance(node, ast.ImportFrom) and node.module and node.module.split(".")[0] in dangerous_imports:
+            violations.append(f"dangerous import: {node.module}")
+        elif isinstance(node, ast.Call):
+            call_name = _call_name(node.func)
+            if call_name in dangerous_calls or call_name in {"os.system", "subprocess.run", "subprocess.Popen"}:
+                violations.append(f"dangerous call: {call_name}")
+    return violations
+
+
+def _call_name(node: ast.AST) -> str:
+    if isinstance(node, ast.Name):
+        return node.id
+    if isinstance(node, ast.Attribute):
+        parent = _call_name(node.value)
+        return f"{parent}.{node.attr}" if parent else node.attr
+    return ""
+
+
+def replacement_digest(content: str) -> str:
+    return hashlib.sha256(content.encode("utf-8")).hexdigest()
 
 
 def _extract_json(text: str) -> str:

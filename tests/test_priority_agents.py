@@ -6,6 +6,7 @@ from pathlib import Path
 from src.agents.coverage_feedback import build_coverage_feedback
 from src.agents.code_reviewer import ReviewFinding
 from src.agents.failure_diagnoser import FailureDiagnosis
+from src.agents.llm_code_fixer import fix_code_with_llm
 from src.agents.llm_code_reviewer import LLMCodeReviewReport
 from src.agents.llm_code_reviewer import review_repository_with_llm
 from src.agents.llm_fix_planner import plan_llm_fixes
@@ -41,6 +42,26 @@ class FakeReviewClient:
 class FakeFixPlannerClient:
     def generate(self, prompt) -> str:
         return '{"target_indexes":[1],"rationale":"Fix the API token handling first."}'
+
+
+class FakeDangerousFixClient:
+    def generate(self, prompt) -> str:
+        return """
+        {
+          "fixes": [
+            {
+              "file_path": "calculator.py",
+              "summary": "Dangerous replacement",
+              "replacement_content": "import subprocess\\n\\ndef add(a, b):\\n    subprocess.run(['echo', 'x'])\\n    return a + b\\n\\ndef divide(a, b):\\n    return a / b\\n"
+            }
+          ]
+        }
+        """
+
+
+class FakeInvalidFixPlannerClient:
+    def generate(self, prompt) -> str:
+        return '{"target_indexes":[999],"rationale":"invalid"}'
 
 
 class PriorityAgentsTest(unittest.TestCase):
@@ -101,6 +122,54 @@ class PriorityAgentsTest(unittest.TestCase):
         self.assertEqual("llm", plan.planner)
         self.assertEqual([1], [target.finding_index for target in plan.targets])
         self.assertEqual(1, plan.remaining_count)
+
+    def test_llm_code_fixer_blocks_dangerous_patch(self) -> None:
+        report = fix_code_with_llm(
+            self.project_path,
+            self.scan,
+            apply_changes=True,
+            client=FakeDangerousFixClient(),
+            config=LLMConfig(
+                provider="dashscope",
+                model="glm-5.2",
+                api_key_set=True,
+                api_key_env="DASHSCOPE_API_KEY",
+                base_url="https://dashscope.aliyuncs.com/compatible-mode/v1",
+            ),
+        )
+
+        self.assertEqual("patch_review_failed", report.status)
+        self.assertIsNotNone(report.patch_review)
+        self.assertFalse(report.patch_review.passed)
+        self.assertFalse(report.fixes[0].applied)
+
+    def test_llm_fix_planner_reports_rule_fallback_reason(self) -> None:
+        review = LLMCodeReviewReport(
+            project_path=str(self.project_path),
+            status="reviewed",
+            provider="dashscope",
+            model="glm-5.2",
+            api_key_set=True,
+            api_key_env="DASHSCOPE_API_KEY",
+            findings=[
+                ReviewFinding("calculator.py", 1, "medium", "llm_review", "First issue", "Fix first."),
+            ],
+        )
+
+        plan = plan_llm_fixes(
+            review,
+            client=FakeInvalidFixPlannerClient(),
+            config=LLMConfig(
+                provider="dashscope",
+                model="glm-5.2",
+                api_key_set=True,
+                api_key_env="DASHSCOPE_API_KEY",
+                base_url="https://dashscope.aliyuncs.com/compatible-mode/v1",
+            ),
+        )
+
+        self.assertEqual("rule", plan.planner)
+        self.assertIn("no valid target indexes", plan.fallback_reason)
 
     def test_sandbox_validator_runs_generated_tests_locally(self) -> None:
         unit_report = generate_missing_unit_tests(self.project_path, self.scan)

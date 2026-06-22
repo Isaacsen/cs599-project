@@ -34,6 +34,7 @@ class LLMFixPlan:
     remaining_count: int = 0
     planner: str = "rule"
     raw_response: str = ""
+    fallback_reason: str = ""
 
     @property
     def target_count(self) -> int:
@@ -70,8 +71,9 @@ def plan_llm_fixes(
             planner="rule",
         )
     active_config = config or LLMConfig.from_env()
+    fallback_reason = "LLM planner skipped because no API key is configured."
     if client is not None or active_config.api_key_set or active_config.provider == "ollama":
-        llm_plan = _plan_with_llm(
+        llm_plan, fallback_reason = _plan_with_llm(
             llm_review,
             ranked,
             sandbox_validation,
@@ -82,13 +84,14 @@ def plan_llm_fixes(
         if llm_plan is not None:
             return llm_plan
 
-    return _plan_with_rules(ranked, sandbox_validation, max_targets)
+    return _plan_with_rules(ranked, sandbox_validation, max_targets, fallback_reason=fallback_reason)
 
 
 def _plan_with_rules(
     ranked: list[tuple[int, ReviewFinding]],
     sandbox_validation: SandboxValidationReport | None,
     max_targets: int,
+    fallback_reason: str = "",
 ) -> LLMFixPlan:
     targets = [
         LLMFixTarget(
@@ -108,6 +111,7 @@ def _plan_with_rules(
         rationale="Fix higher severity and sandbox-relevant findings first.",
         remaining_count=remaining_count,
         planner="rule",
+        fallback_reason=fallback_reason,
     )
 
 
@@ -118,7 +122,7 @@ def _plan_with_llm(
     max_targets: int,
     client: LLMClient | None,
     config: LLMConfig,
-) -> LLMFixPlan | None:
+) -> tuple[LLMFixPlan | None, str]:
     prompt = _build_planner_prompt(llm_review, candidates, sandbox_validation, max_targets)
     active_client = client or OpenAICompatibleLLMClient(
         config,
@@ -127,11 +131,11 @@ def _plan_with_llm(
     )
     try:
         raw_response = active_client.generate(prompt)
-    except Exception:
-        return None
+    except Exception as exc:
+        return None, f"LLM planner failed: {exc}"
     indexes, rationale = _parse_planner_response(raw_response, {index for index, _finding in candidates}, max_targets)
     if not indexes:
-        return None
+        return None, "LLM planner returned no valid target indexes."
     finding_by_index = dict(candidates)
     targets = [
         LLMFixTarget(
@@ -151,7 +155,7 @@ def _plan_with_llm(
         remaining_count=max(0, len(candidates) - len(targets)),
         planner="llm",
         raw_response=raw_response,
-    )
+    ), ""
 
 
 def selected_findings(
