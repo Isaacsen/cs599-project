@@ -129,7 +129,7 @@ graph LR
 
 | 课程要求 | 架构对应 |
 | --- | --- |
-| SDD 规格驱动开发 | `docs/specs/` |
+| SDD 规格驱动开发 | `docs/CS599_大作业报告.md` 第二章内嵌 Product Spec / Architecture Spec / API Spec |
 | 工具调用 | Repo Scan Agent、Security Checker、Sandbox Executor、Report Writer、LLM Client |
 | 状态管理与多步推理 | LangGraph StateGraph |
 | 多智能体协作 | Scan、Review、Fix Plan、Fix、Test、Sandbox、Repair、Coverage |

@@ -120,9 +120,7 @@ scripts/final_verify.ps1
 - `docs/CS599_大作业报告.md`
 - `docs/CS599_大作业报告.pdf`
 - `docs/architecture.md`
-- `docs/specs/product_spec.md`
-- `docs/specs/architecture_spec.md`
-- `docs/specs/api_spec.md`
+- `docs/CS599_大作业报告.md` 第二章：内嵌 Product Spec / Architecture Spec / API Spec
 - `docs/runs/software_engineer.json`
 - `docs/runs/software_engineer.md`
 - `docs/runs/software_engineer_agent_flow.png`
