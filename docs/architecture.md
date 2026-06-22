@@ -53,7 +53,7 @@ scan
 - `llm_fix` 后：生成的完整文件替换会先经过本地 patch safety review，检查语法错误、公共函数删除、危险 import/call；审查失败时不会写回源码。
 - `llm_tests` 后：启用 `--run-sandbox` 时进入 `sandbox_validate`，否则进入 `coverage_feedback`。
 - `sandbox_validate` 后：进入 `repair_loop`。如果失败像代码缺陷，则把当前测试结果和失败诊断回送到 `llm_fix_plan` 重新选择修复顺序，再进入 `llm_fix`；如果失败像生成测试自身的问题，则回到 `llm_tests`；如果测试通过但仍有未处理的 LLM findings，则继续回到 `llm_fix_plan` 处理下一批；如果测试通过且所有 findings 已处理、达到上限或需要人工判断，则进入 `coverage_feedback`。
-- CLI 默认输出 `[agent-stream]` 节点开始与完成事件；如需安静输出，可传入 `--no-stream`。需要查看模型实时文本时可传入 `--stream-llm-tokens`，终端会提示该输出可能包含源码片段。LLM 请求可通过 `--llm-timeout` 和 `--llm-retries` 控制超时与重试。
+- CLI 默认输出 `[agent-stream]` 节点开始与完成事件，并默认开启 `[llm-stream]` token 级模型输出；如需安静输出，可传入 `--no-stream` 和 `--no-llm-token-stream`。终端会提示 token 输出可能包含源码片段。LLM 请求可通过 `--llm-timeout` 和 `--llm-retries` 控制超时与重试。
 - workflow 同时记录 `attempted_finding_indexes` 与 `resolved_finding_indexes`：dry-run 或仅生成建议只算 attempted，只有 `--apply-fixes` 写回且沙箱通过后才算 resolved。
 
 ## 4. 分层设计

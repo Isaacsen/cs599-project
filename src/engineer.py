@@ -96,7 +96,12 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--stream-llm-tokens",
         action="store_true",
-        help="Print token-level LLM streaming output when supported by the provider.",
+        help="Deprecated: token-level LLM streaming is enabled by default.",
+    )
+    parser.add_argument(
+        "--no-llm-token-stream",
+        action="store_true",
+        help="Disable token-level LLM streaming output.",
     )
     return parser
 
@@ -110,7 +115,7 @@ def main() -> int:
             os.environ["LLM_TIMEOUT_SECONDS"] = str(args.llm_timeout)
         if args.llm_retries is not None:
             os.environ["LLM_MAX_RETRIES"] = str(args.llm_retries)
-        if args.stream_llm_tokens:
+        if not args.no_llm_token_stream:
             os.environ["LLM_STREAM_STDOUT"] = "1"
             print(
                 "[llm-stream-warning] token-level output may include source snippets or model-generated code.",
