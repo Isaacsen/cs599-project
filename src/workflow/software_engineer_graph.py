@@ -50,6 +50,8 @@ class SoftwareEngineerGraphState(TypedDict, total=False):
     repair_loop: RepairLoopReport
     repair_history: list[RepairLoopReport]
     repair_iteration: int
+    attempted_finding_indexes: list[int]
+    resolved_finding_indexes: list[int]
     processed_finding_indexes: list[int]
     coverage_feedback: CoverageFeedbackReport
     node_trace: list[str]
@@ -102,6 +104,8 @@ def run_software_engineer_graph(
         "repair_iteration": 0,
         "llm_test_file_path": str(llm_test_file_path),
         "max_functions": max_functions,
+        "attempted_finding_indexes": [],
+        "resolved_finding_indexes": [],
         "processed_finding_indexes": [],
         "node_trace": [],
     }
@@ -181,7 +185,7 @@ def llm_fix_plan_node(state: SoftwareEngineerGraphState) -> SoftwareEngineerGrap
     llm_fix_plan = plan_llm_fixes(
         state.get("llm_review"),
         sandbox_validation=state.get("sandbox_validation"),
-        exclude_finding_indexes=set(state.get("processed_finding_indexes", [])),
+        exclude_finding_indexes=set(state.get("attempted_finding_indexes", state.get("processed_finding_indexes", []))),
     )
     return {
         "llm_fix_plan": llm_fix_plan,
@@ -247,14 +251,19 @@ def repair_loop_node(state: SoftwareEngineerGraphState) -> SoftwareEngineerGraph
         current_iteration=state.get("repair_iteration", 0),
         max_iterations=state.get("repair_iterations", 3),
     )
-    processed = state.get("processed_finding_indexes", [])
+    attempted = state.get("attempted_finding_indexes", state.get("processed_finding_indexes", []))
+    resolved = state.get("resolved_finding_indexes", [])
     if repair_loop.status == "complete" and state.get("sandbox_validation") and state["sandbox_validation"].passed:
-        processed = _merge_processed_findings(processed, state.get("llm_fix_plan"))
+        attempted = _merge_finding_indexes(attempted, state.get("llm_fix_plan"))
+        if _latest_fix_is_resolved(state):
+            resolved = _merge_finding_indexes(resolved, state.get("llm_fix_plan"))
     return {
         "repair_loop": repair_loop,
         "repair_history": [*state.get("repair_history", []), repair_loop],
         "repair_iteration": repair_loop.iteration,
-        "processed_finding_indexes": processed,
+        "attempted_finding_indexes": attempted,
+        "resolved_finding_indexes": resolved,
+        "processed_finding_indexes": attempted,
         "node_trace": [*state.get("node_trace", []), "repair_loop"],
     }
 
@@ -272,8 +281,11 @@ def coverage_feedback_node(state: SoftwareEngineerGraphState) -> SoftwareEnginee
 
 
 def finish_node(state: SoftwareEngineerGraphState) -> SoftwareEngineerGraphState:
+    status = "completed"
+    if _unresolved_finding_indexes(state):
+        status = "completed_with_unresolved_findings"
     return {
-        "status": "completed",
+        "status": status,
         "node_trace": [*state.get("node_trace", []), "finish"],
     }
 
@@ -293,6 +305,9 @@ def format_software_engineer_graph_result(result: SoftwareEngineerGraphResult) -
         "",
         "Outcome",
         f"  LLM Review Findings: {_llm_review_count(state)}",
+        f"  Attempted Findings: {len(state.get('attempted_finding_indexes', state.get('processed_finding_indexes', [])))}",
+        f"  Resolved Findings: {len(state.get('resolved_finding_indexes', []))}",
+        f"  Unresolved Findings: {len(_unresolved_finding_indexes(state))}",
         f"  LLM Fixes Planned: {_llm_fix_count(state)}",
         f"  Generated LLM Tests: {result.generated_llm_test_count}",
         f"  Sandbox Validation: {_sandbox_status(state)}",
@@ -377,6 +392,9 @@ def _format_highlights(state: SoftwareEngineerGraphState) -> list[str]:
         highlights.append(f"  - Next action: {repair.actions[0]}")
     if not highlights:
         highlights.append("  - No detailed highlights available.")
+    unresolved = _unresolved_finding_indexes(state)
+    if unresolved:
+        highlights.append(f"  - Unresolved review findings: {len(unresolved)} ({unresolved})")
     return highlights
 
 
@@ -418,7 +436,7 @@ def _route_after_repair_loop(state: SoftwareEngineerGraphState) -> str:
         and report.status == "complete"
         and state.get("sandbox_validation") is not None
         and state["sandbox_validation"].passed
-        and _has_unprocessed_findings(state)
+        and _has_unattempted_findings(state)
     ):
         return "llm_fix_plan"
     return "coverage_feedback"
@@ -508,16 +526,31 @@ def _emit_progress(
         progress_callback(node, state)
 
 
-def _merge_processed_findings(processed: list[int], plan: LLMFixPlan | None) -> list[int]:
-    merged = set(processed)
+def _merge_finding_indexes(existing: list[int], plan: LLMFixPlan | None) -> list[int]:
+    merged = set(existing)
     if plan is not None:
         merged.update(target.finding_index for target in plan.targets)
     return sorted(merged)
 
 
-def _has_unprocessed_findings(state: SoftwareEngineerGraphState) -> bool:
+def _has_unattempted_findings(state: SoftwareEngineerGraphState) -> bool:
     review = state.get("llm_review")
     if review is None:
         return False
-    processed = set(state.get("processed_finding_indexes", []))
-    return any(index not in processed for index, _finding in enumerate(review.findings))
+    attempted = set(state.get("attempted_finding_indexes", state.get("processed_finding_indexes", [])))
+    return any(index not in attempted for index, _finding in enumerate(review.findings))
+
+
+def _unresolved_finding_indexes(state: SoftwareEngineerGraphState) -> list[int]:
+    review = state.get("llm_review")
+    if review is None:
+        return []
+    resolved = set(state.get("resolved_finding_indexes", []))
+    return [index for index, _finding in enumerate(review.findings) if index not in resolved]
+
+
+def _latest_fix_is_resolved(state: SoftwareEngineerGraphState) -> bool:
+    report = state.get("llm_fix")
+    if report is None:
+        return False
+    return bool(report.applied and report.fix_count > 0 and report.status == "fixed")

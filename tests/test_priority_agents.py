@@ -4,8 +4,11 @@ import unittest
 from pathlib import Path
 
 from src.agents.coverage_feedback import build_coverage_feedback
+from src.agents.code_reviewer import ReviewFinding
 from src.agents.failure_diagnoser import FailureDiagnosis
+from src.agents.llm_code_reviewer import LLMCodeReviewReport
 from src.agents.llm_code_reviewer import review_repository_with_llm
+from src.agents.llm_fix_planner import plan_llm_fixes
 from src.agents.repair_loop import plan_repair_iteration
 from src.agents.result_analyzer import PytestSummary
 from src.agents.sandbox_validator import SandboxValidationReport
@@ -35,6 +38,11 @@ class FakeReviewClient:
         """
 
 
+class FakeFixPlannerClient:
+    def generate(self, prompt) -> str:
+        return '{"target_indexes":[1],"rationale":"Fix the API token handling first."}'
+
+
 class PriorityAgentsTest(unittest.TestCase):
     def setUp(self) -> None:
         self.temp_dir = tempfile.TemporaryDirectory()
@@ -62,6 +70,37 @@ class PriorityAgentsTest(unittest.TestCase):
         self.assertEqual("reviewed", report.status)
         self.assertEqual(1, report.finding_count)
         self.assertEqual("llm_boundary_review", report.findings[0].rule)
+
+    def test_llm_fix_planner_uses_llm_selected_order(self) -> None:
+        review = LLMCodeReviewReport(
+            project_path=str(self.project_path),
+            status="reviewed",
+            provider="dashscope",
+            model="glm-5.2",
+            api_key_set=True,
+            api_key_env="DASHSCOPE_API_KEY",
+            findings=[
+                ReviewFinding("calculator.py", 1, "medium", "llm_review", "First issue", "Fix first."),
+                ReviewFinding("calculator.py", 2, "low", "llm_review", "Second issue", "Fix second."),
+            ],
+        )
+
+        plan = plan_llm_fixes(
+            review,
+            max_targets=1,
+            client=FakeFixPlannerClient(),
+            config=LLMConfig(
+                provider="dashscope",
+                model="glm-5.2",
+                api_key_set=True,
+                api_key_env="DASHSCOPE_API_KEY",
+                base_url="https://dashscope.aliyuncs.com/compatible-mode/v1",
+            ),
+        )
+
+        self.assertEqual("llm", plan.planner)
+        self.assertEqual([1], [target.finding_index for target in plan.targets])
+        self.assertEqual(1, plan.remaining_count)
 
     def test_sandbox_validator_runs_generated_tests_locally(self) -> None:
         unit_report = generate_missing_unit_tests(self.project_path, self.scan)

@@ -25,6 +25,12 @@ def software_engineer_graph_result_to_dict(result: SoftwareEngineerGraphResult) 
             "apply_tests": state.get("apply_tests", False),
             "run_sandbox": state.get("run_sandbox", False),
             "sandbox_executor": state.get("sandbox_executor", "docker"),
+            "attempted_finding_indexes": state.get(
+                "attempted_finding_indexes",
+                state.get("processed_finding_indexes", []),
+            ),
+            "resolved_finding_indexes": state.get("resolved_finding_indexes", []),
+            "unresolved_finding_indexes": _unresolved_finding_indexes(state),
             "processed_finding_indexes": state.get("processed_finding_indexes", []),
         },
     }
@@ -87,6 +93,9 @@ def format_software_engineer_markdown(result: SoftwareEngineerGraphResult) -> st
         f"| Status | `{state.get('status', 'unknown')}` |",
         f"| Runtime | `{result.graph_runtime}` |",
         f"| LLM Review Findings | {_count(state.get('llm_review'), 'finding_count')} |",
+        f"| Attempted Findings | {len(state.get('attempted_finding_indexes', state.get('processed_finding_indexes', [])))} |",
+        f"| Resolved Findings | {len(state.get('resolved_finding_indexes', []))} |",
+        f"| Unresolved Findings | {len(_unresolved_finding_indexes(state))} |",
         f"| LLM Fixes | {_fix_count(state)} |",
         f"| Generated LLM Tests | {result.generated_llm_test_count} |",
         f"| Sandbox Validation | `{_status(state.get('sandbox_validation'))}` |",
@@ -106,8 +115,14 @@ def format_software_engineer_markdown(result: SoftwareEngineerGraphResult) -> st
     lines.extend(_finding_table(state.get("llm_review")))
     lines.extend(["", "## LLM Fix Plan", ""])
     lines.extend(_fix_plan_section(state.get("llm_fix_plan")))
+    if state.get("llm_fix_plan_history"):
+        lines.extend(["", "## LLM Fix Plan History", ""])
+        lines.extend(_fix_plan_history_section(state.get("llm_fix_plan_history")))
     lines.extend(["", "## LLM Code Fixes", ""])
     lines.extend(_fix_section(state.get("llm_fix")))
+    if state.get("llm_fix_history"):
+        lines.extend(["", "## LLM Code Fix History", ""])
+        lines.extend(_fix_history_section(state.get("llm_fix_history")))
     lines.extend(["", "## Sandbox Validation", ""])
     lines.extend(_sandbox_section(state.get("sandbox_validation")))
     lines.extend(["", "## Coverage Feedback", ""])
@@ -147,6 +162,7 @@ def _llm_fix_to_dict(report: LLMCodeFixReport) -> dict[str, Any]:
         "summary": {
             "fix_count": report.fix_count,
         },
+        "error_summary": _fix_error_summary(report),
         "fixes": [
             {
                 "file_path": fix.file_path,
@@ -167,6 +183,8 @@ def _llm_fix_plan_to_dict(plan: LLMFixPlan) -> dict[str, Any]:
             "target_count": plan.target_count,
             "remaining_count": plan.remaining_count,
         },
+        "planner": plan.planner,
+        "raw_response_excerpt": _excerpt(plan.raw_response),
         "targets": [
             {
                 "finding_index": target.finding_index,
@@ -321,7 +339,11 @@ def _fix_section(report: Any) -> list[str]:
     if report is None:
         return ["LLM code fixer was not run."]
     if not report.fixes:
-        return [f"Status: `{report.status}`. No fixes were proposed."]
+        lines = [f"Status: `{report.status}`. No fixes were proposed."]
+        error_summary = _fix_error_summary(report)
+        if error_summary:
+            lines.extend(["", f"Failure summary: `{_cell(error_summary)}`"])
+        return lines
     lines = ["| File | Applied | Summary |", "| --- | --- | --- |"]
     for fix in report.fixes[:8]:
         lines.append(f"| `{_cell(fix.file_path)}` | `{fix.applied}` | {_cell(fix.summary)} |")
@@ -333,7 +355,11 @@ def _fix_plan_section(plan: Any) -> list[str]:
         return ["LLM fix planner was not run."]
     if not plan.targets:
         return [f"Status: `{plan.status}`. No fix targets were selected. Remaining findings: {plan.remaining_count}."]
-    lines = [f"Remaining findings after this plan: **{plan.remaining_count}**", ""]
+    lines = [
+        f"Planner: `{plan.planner}`",
+        f"Remaining findings after this plan: **{plan.remaining_count}**",
+        "",
+    ]
     lines.extend(["| Order | Finding | Severity | Reason |", "| ---: | --- | --- | --- |"])
     for order, target in enumerate(plan.targets, start=1):
         finding = f"{target.file_path}:{target.line} ({target.rule})"
@@ -345,6 +371,51 @@ def _fix_plan_section(plan: Any) -> list[str]:
                     _cell(finding),
                     _cell(target.severity),
                     _cell(target.reason),
+                ]
+            )
+            + " |"
+        )
+    return lines
+
+
+def _fix_plan_history_section(history: Any) -> list[str]:
+    if not history:
+        return ["No fix-plan history was recorded."]
+    lines = ["| Round | Planner | Targets | Remaining | Rationale |", "| ---: | --- | --- | ---: | --- |"]
+    for round_index, plan in enumerate(history, start=1):
+        targets = ", ".join(f"#{target.finding_index} {target.file_path}:{target.line}" for target in plan.targets)
+        lines.append(
+            "| "
+            + " | ".join(
+                [
+                    str(round_index),
+                    _cell(plan.planner),
+                    _cell(targets or "none"),
+                    str(plan.remaining_count),
+                    _cell(plan.rationale),
+                ]
+            )
+            + " |"
+        )
+    return lines
+
+
+def _fix_history_section(history: Any) -> list[str]:
+    if not history:
+        return ["No code-fix history was recorded."]
+    lines = ["| Round | Status | Fixes | Applied | Summary | Error |", "| ---: | --- | ---: | --- | --- | --- |"]
+    for round_index, report in enumerate(history, start=1):
+        summaries = "; ".join(fix.summary for fix in report.fixes[:3])
+        lines.append(
+            "| "
+            + " | ".join(
+                [
+                    str(round_index),
+                    _cell(report.status),
+                    str(report.fix_count),
+                    str(report.applied),
+                    _cell(summaries or "none"),
+                    _cell(_fix_error_summary(report)),
                 ]
             )
             + " |"
@@ -401,3 +472,27 @@ def _repair_history_section(history: Any) -> list[str]:
 def _cell(value: Any) -> str:
     text = str(value).replace("\n", " ").strip()
     return text.replace("|", "\\|")
+
+
+def _excerpt(value: str, limit: int = 500) -> str:
+    text = value.replace("\n", " ").strip()
+    if len(text) <= limit:
+        return text
+    return text[:limit] + "..."
+
+
+def _fix_error_summary(report: Any) -> str:
+    if report is None or report.fix_count:
+        return ""
+    raw_response = getattr(report, "raw_response", "")
+    if not raw_response:
+        return ""
+    return _excerpt(raw_response, 240)
+
+
+def _unresolved_finding_indexes(state: dict[str, Any]) -> list[int]:
+    review = state.get("llm_review")
+    if review is None:
+        return []
+    resolved = set(state.get("resolved_finding_indexes", []))
+    return [index for index, _finding in enumerate(review.findings) if index not in resolved]

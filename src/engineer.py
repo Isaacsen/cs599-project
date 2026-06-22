@@ -1,6 +1,7 @@
 ﻿from __future__ import annotations
 
 import argparse
+import os
 import sys
 
 from src.tools.software_engineer_graph_writer import (
@@ -59,6 +60,18 @@ def build_parser() -> argparse.ArgumentParser:
         help="Timeout in seconds for sandbox validation.",
     )
     parser.add_argument(
+        "--llm-timeout",
+        type=int,
+        default=None,
+        help="Timeout in seconds for each LLM request. Defaults to LLM_TIMEOUT_SECONDS or 60.",
+    )
+    parser.add_argument(
+        "--llm-retries",
+        type=int,
+        default=None,
+        help="Number of retry attempts for each LLM request. Defaults to LLM_MAX_RETRIES or 1.",
+    )
+    parser.add_argument(
         "--repair-iterations",
         type=int,
         default=3,
@@ -80,6 +93,11 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Disable live per-agent progress output.",
     )
+    parser.add_argument(
+        "--stream-llm-tokens",
+        action="store_true",
+        help="Print token-level LLM streaming output when supported by the provider.",
+    )
     return parser
 
 
@@ -88,6 +106,12 @@ def main() -> int:
     args = parser.parse_args()
 
     try:
+        if args.llm_timeout is not None:
+            os.environ["LLM_TIMEOUT_SECONDS"] = str(args.llm_timeout)
+        if args.llm_retries is not None:
+            os.environ["LLM_MAX_RETRIES"] = str(args.llm_retries)
+        if args.stream_llm_tokens:
+            os.environ["LLM_STREAM_STDOUT"] = "1"
         report = run_software_engineer_graph(
             args.project_path,
             apply_fixes=args.apply_fixes,

@@ -66,6 +66,23 @@ class LLMTestPromptBuilderTest(unittest.TestCase):
         self.assertEqual("glm-5.2", config.model)
         self.assertTrue(config.api_key_set)
         self.assertEqual("DASHSCOPE_API_KEY", config.api_key_env)
+        self.assertEqual(120, config.timeout_seconds)
+        self.assertEqual(1, config.max_retries)
+
+    def test_llm_timeout_and_retries_are_configurable(self) -> None:
+        with patch.dict(
+            "os.environ",
+            {
+                "DASHSCOPE_API_KEY": "unit-test-value",
+                "LLM_TIMEOUT_SECONDS": "180",
+                "LLM_MAX_RETRIES": "2",
+            },
+            clear=True,
+        ):
+            config = LLMConfig.from_env()
+
+        self.assertEqual(180, config.timeout_seconds)
+        self.assertEqual(2, config.max_retries)
 
     def test_deepseek_api_key_is_supported_when_provider_is_set(self) -> None:
         with patch.dict(

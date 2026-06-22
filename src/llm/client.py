@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import json
+import os
+import time
 from typing import Protocol
 from urllib import error, request
 
@@ -14,13 +16,20 @@ class LLMClient(Protocol):
 
 
 class OpenAICompatibleLLMClient:
-    def __init__(self, config: LLMConfig | None = None, timeout_seconds: int = 60) -> None:
+    def __init__(
+        self,
+        config: LLMConfig | None = None,
+        timeout_seconds: int | None = None,
+        max_retries: int | None = None,
+    ) -> None:
         self.config = config or LLMConfig.from_env()
-        self.timeout_seconds = timeout_seconds
+        self.timeout_seconds = timeout_seconds or self.config.timeout_seconds
+        self.max_retries = max_retries if max_retries is not None else self.config.max_retries
 
     def generate(self, prompt: LLMTestPrompt) -> str:
         if not self.config.api_key_set and self.config.provider != "ollama":
             raise ValueError(f"Missing API key in {self.config.api_key_env}")
+        stream_stdout = os.getenv("LLM_STREAM_STDOUT", "").strip() == "1"
         payload = {
             "model": self.config.model,
             "messages": [
@@ -28,7 +37,7 @@ class OpenAICompatibleLLMClient:
                 {"role": "user", "content": prompt.user},
             ],
             "temperature": 0.2,
-            "stream": False,
+            "stream": stream_stdout,
         }
         data = json.dumps(payload).encode("utf-8")
         headers = {"Content-Type": "application/json"}
@@ -41,13 +50,22 @@ class OpenAICompatibleLLMClient:
             headers=headers,
             method="POST",
         )
-        try:
-            with request.urlopen(req, timeout=self.timeout_seconds) as response:
-                body = response.read().decode("utf-8")
-        except error.URLError as exc:
-            raise RuntimeError(f"LLM request failed: {exc}") from exc
+        last_error: Exception | None = None
+        for attempt in range(self.max_retries + 1):
+            try:
+                with request.urlopen(req, timeout=self.timeout_seconds) as response:
+                    if stream_stdout:
+                        return _read_streaming_content(response)
+                    body = response.read().decode("utf-8")
+                return _extract_chat_content(json.loads(body))
+            except (error.URLError, TimeoutError) as exc:
+                last_error = exc
+                if attempt < self.max_retries:
+                    time.sleep(min(2**attempt, 4))
+                    continue
+                raise RuntimeError(f"LLM request failed after {attempt + 1} attempt(s): {exc}") from exc
 
-        return _extract_chat_content(json.loads(body))
+        raise RuntimeError(f"LLM request failed: {last_error}")
 
 
 def _chat_completions_url(base_url: str) -> str:
@@ -66,3 +84,29 @@ def _extract_chat_content(payload: dict) -> str:
     if not isinstance(content, str) or not content.strip():
         raise ValueError("LLM response did not include message content.")
     return content
+
+
+def _read_streaming_content(response: object) -> str:
+    chunks: list[str] = []
+    print("[llm-stream] ", end="", flush=True)
+    for raw_line in response:
+        line = raw_line.decode("utf-8", errors="replace").strip()
+        if not line or not line.startswith("data:"):
+            continue
+        data = line.removeprefix("data:").strip()
+        if data == "[DONE]":
+            break
+        try:
+            payload = json.loads(data)
+        except json.JSONDecodeError:
+            continue
+        delta = (payload.get("choices") or [{}])[0].get("delta") or {}
+        content = delta.get("content") or ""
+        if content:
+            chunks.append(content)
+            print(content, end="", flush=True)
+    print("", flush=True)
+    result = "".join(chunks)
+    if not result.strip():
+        raise ValueError("LLM streaming response did not include message content.")
+    return result

@@ -172,12 +172,23 @@ def _sandbox_report(project_path, passed, failure_types=None, suggestions=None):
 
 class SoftwareEngineerGraphTest(unittest.TestCase):
     def setUp(self) -> None:
+        self.env_patch = patch.dict(
+            "os.environ",
+            {
+                "DASHSCOPE_API_KEY": "",
+                "DEEPSEEK_API_KEY": "",
+                "OPENAI_API_KEY": "",
+                "LLM_API_KEY": "",
+            },
+        )
+        self.env_patch.start()
         self.temp_dir = tempfile.TemporaryDirectory()
         self.project_path = Path(self.temp_dir.name) / "review_target"
         shutil.copytree("examples/review_target", self.project_path)
 
     def tearDown(self) -> None:
         self.temp_dir.cleanup()
+        self.env_patch.stop()
 
     def test_runs_graph_dry_run_without_writing_source(self) -> None:
         source_file = self.project_path / "risky_module.py"
@@ -190,7 +201,7 @@ class SoftwareEngineerGraphTest(unittest.TestCase):
         ):
             result = run_software_engineer_graph(self.project_path)
 
-        self.assertEqual("completed", result.state["status"])
+        self.assertEqual("completed_with_unresolved_findings", result.state["status"])
         self.assertIn(result.graph_runtime, {"langgraph", "fallback"})
         self.assertEqual(
             ["scan", "llm_review", "llm_fix_plan", "llm_fix", "llm_tests", "coverage_feedback", "finish"],
@@ -268,7 +279,8 @@ class SoftwareEngineerGraphTest(unittest.TestCase):
         self.assertIn("repair_loop", result.node_trace)
         self.assertTrue(result.state["sandbox_validation"].passed)
         self.assertEqual("complete", result.state["repair_loop"].status)
-        self.assertEqual([0, 1, 2], result.state["processed_finding_indexes"])
+        self.assertEqual([0, 1, 2], result.state["attempted_finding_indexes"])
+        self.assertEqual([], result.state["resolved_finding_indexes"])
 
     def test_repair_loop_retries_llm_tests_after_sandbox_failure(self) -> None:
         sandbox_reports = [

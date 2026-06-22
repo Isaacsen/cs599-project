@@ -1,10 +1,15 @@
 from __future__ import annotations
 
+import json
+import re
 from dataclasses import dataclass
 
 from src.agents.code_reviewer import ReviewFinding
 from src.agents.llm_code_reviewer import LLMCodeReviewReport
 from src.agents.sandbox_validator import SandboxValidationReport
+from src.llm.client import LLMClient, OpenAICompatibleLLMClient
+from src.llm.config import LLMConfig
+from src.llm.prompt_builder import LLMTestPrompt
 
 
 MAX_FINDINGS_PER_FIX = 2
@@ -27,6 +32,8 @@ class LLMFixPlan:
     targets: list[LLMFixTarget]
     rationale: str
     remaining_count: int = 0
+    planner: str = "rule"
+    raw_response: str = ""
 
     @property
     def target_count(self) -> int:
@@ -38,9 +45,15 @@ def plan_llm_fixes(
     sandbox_validation: SandboxValidationReport | None = None,
     max_targets: int = MAX_FINDINGS_PER_FIX,
     exclude_finding_indexes: set[int] | None = None,
+    client: LLMClient | None = None,
+    config: LLMConfig | None = None,
 ) -> LLMFixPlan:
     if llm_review is None or not llm_review.findings:
-        return LLMFixPlan(status="no_findings", targets=[], rationale="No LLM review findings are available.")
+        return LLMFixPlan(
+            status="no_findings",
+            targets=[],
+            rationale="No LLM review findings are available.",
+        )
 
     excluded = exclude_finding_indexes or set()
     ranked = [
@@ -48,6 +61,35 @@ def plan_llm_fixes(
         for item in _rank_findings(llm_review.findings, sandbox_validation)
         if item[0] not in excluded
     ]
+    if not ranked:
+        return LLMFixPlan(
+            status="no_targets",
+            targets=[],
+            rationale="All review findings have already been attempted.",
+            remaining_count=0,
+            planner="rule",
+        )
+    active_config = config or LLMConfig.from_env()
+    if client is not None or active_config.api_key_set or active_config.provider == "ollama":
+        llm_plan = _plan_with_llm(
+            llm_review,
+            ranked,
+            sandbox_validation,
+            max_targets,
+            client=client,
+            config=active_config,
+        )
+        if llm_plan is not None:
+            return llm_plan
+
+    return _plan_with_rules(ranked, sandbox_validation, max_targets)
+
+
+def _plan_with_rules(
+    ranked: list[tuple[int, ReviewFinding]],
+    sandbox_validation: SandboxValidationReport | None,
+    max_targets: int,
+) -> LLMFixPlan:
     targets = [
         LLMFixTarget(
             finding_index=index,
@@ -65,6 +107,50 @@ def plan_llm_fixes(
         targets=targets,
         rationale="Fix higher severity and sandbox-relevant findings first.",
         remaining_count=remaining_count,
+        planner="rule",
+    )
+
+
+def _plan_with_llm(
+    llm_review: LLMCodeReviewReport,
+    candidates: list[tuple[int, ReviewFinding]],
+    sandbox_validation: SandboxValidationReport | None,
+    max_targets: int,
+    client: LLMClient | None,
+    config: LLMConfig,
+) -> LLMFixPlan | None:
+    prompt = _build_planner_prompt(llm_review, candidates, sandbox_validation, max_targets)
+    active_client = client or OpenAICompatibleLLMClient(
+        config,
+        timeout_seconds=min(config.timeout_seconds, 45),
+        max_retries=min(config.max_retries, 1),
+    )
+    try:
+        raw_response = active_client.generate(prompt)
+    except Exception:
+        return None
+    indexes, rationale = _parse_planner_response(raw_response, {index for index, _finding in candidates}, max_targets)
+    if not indexes:
+        return None
+    finding_by_index = dict(candidates)
+    targets = [
+        LLMFixTarget(
+            finding_index=index,
+            file_path=finding_by_index[index].file_path,
+            line=finding_by_index[index].line,
+            severity=finding_by_index[index].severity,
+            rule=finding_by_index[index].rule,
+            reason=rationale or "Selected by LLM fix planner.",
+        )
+        for index in indexes
+    ]
+    return LLMFixPlan(
+        status="planned",
+        targets=targets,
+        rationale=rationale or "Selected by LLM fix planner.",
+        remaining_count=max(0, len(candidates) - len(targets)),
+        planner="llm",
+        raw_response=raw_response,
     )
 
 
@@ -125,3 +211,75 @@ def _target_reason(finding: ReviewFinding, sandbox_validation: SandboxValidation
     if sandbox_validation is not None and not sandbox_validation.passed:
         return "Selected because the latest sandbox failure may be related to this review finding."
     return f"Selected because it is a {finding.severity} severity review finding."
+
+
+def _build_planner_prompt(
+    llm_review: LLMCodeReviewReport,
+    candidates: list[tuple[int, ReviewFinding]],
+    sandbox_validation: SandboxValidationReport | None,
+    max_targets: int,
+) -> LLMTestPrompt:
+    findings = [
+        {
+            "index": index,
+            "file_path": finding.file_path,
+            "line": finding.line,
+            "severity": finding.severity,
+            "message": finding.message,
+            "suggestion": finding.suggestion,
+        }
+        for index, finding in candidates[:12]
+    ]
+    sandbox = {
+        "status": sandbox_validation.status,
+        "failure_types": sandbox_validation.diagnosis.failure_types,
+        "key_findings": sandbox_validation.diagnosis.key_findings[:5],
+    } if sandbox_validation is not None else {"status": "not_run"}
+    user = (
+        "Choose the next findings for the Code Fix Agent. "
+        f"Select at most {max_targets} finding indexes. Prefer fixes that unlock failing sandbox tests, "
+        "then high severity, then low-risk isolated changes. Return JSON only with this shape:\n"
+        '{"target_indexes":[0],"rationale":"why these should be fixed now"}\n\n'
+        f"Review status: {llm_review.status}\n"
+        f"Sandbox summary: {json.dumps(sandbox, ensure_ascii=False)}\n"
+        f"Candidate findings: {json.dumps(findings, ensure_ascii=False)}"
+    )
+    return LLMTestPrompt(
+        system=(
+            "You are Software Engineer Agent Fix Planner. Choose a small, ordered batch of review findings "
+            "for the next code-fix attempt. Return valid JSON only."
+        ),
+        user=user,
+        covered_functions=[finding.file_path for _index, finding in candidates[:max_targets]],
+    )
+
+
+def _parse_planner_response(raw_response: str, allowed_indexes: set[int], max_targets: int) -> tuple[list[int], str]:
+    payload_text = _extract_json(raw_response)
+    try:
+        payload = json.loads(payload_text)
+    except json.JSONDecodeError:
+        return [], ""
+    indexes: list[int] = []
+    for value in payload.get("target_indexes", []):
+        try:
+            index = int(value)
+        except (TypeError, ValueError):
+            continue
+        if index in allowed_indexes and index not in indexes:
+            indexes.append(index)
+        if len(indexes) >= max_targets:
+            break
+    rationale = str(payload.get("rationale", "")).strip()[:500]
+    return indexes, rationale
+
+
+def _extract_json(text: str) -> str:
+    match = re.search(r"```(?:json)?\s*(.*?)```", text, flags=re.DOTALL | re.IGNORECASE)
+    if match:
+        return match.group(1).strip()
+    start = text.find("{")
+    end = text.rfind("}")
+    if start != -1 and end != -1 and end > start:
+        return text[start : end + 1]
+    return text.strip()

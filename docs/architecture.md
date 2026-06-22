@@ -49,10 +49,11 @@ scan
 
 条件分支：
 
-- `llm_review` 后：固定进入 `llm_fix_plan`，由 Fix Planner 从 LLM findings 中选择本轮一个或多个修复目标并排序，再交给 `llm_fix` 生成修复建议；显式传入 `--apply-fixes` 时才写回源码。
+- `llm_review` 后：固定进入 `llm_fix_plan`，由 LLM Fix Planner 从 LLM findings 中选择本轮一个或多个修复目标并排序；若 LLM planner 不可用或返回无效结果，则降级为确定性规则排序，再交给 `llm_fix` 生成修复建议；显式传入 `--apply-fixes` 时才写回源码。
 - `llm_tests` 后：启用 `--run-sandbox` 时进入 `sandbox_validate`，否则进入 `coverage_feedback`。
 - `sandbox_validate` 后：进入 `repair_loop`。如果失败像代码缺陷，则把当前测试结果和失败诊断回送到 `llm_fix_plan` 重新选择修复顺序，再进入 `llm_fix`；如果失败像生成测试自身的问题，则回到 `llm_tests`；如果测试通过但仍有未处理的 LLM findings，则继续回到 `llm_fix_plan` 处理下一批；如果测试通过且所有 findings 已处理、达到上限或需要人工判断，则进入 `coverage_feedback`。
-- CLI 默认输出 `[agent-stream]` 节点开始与完成事件；如需安静输出，可传入 `--no-stream`。
+- CLI 默认输出 `[agent-stream]` 节点开始与完成事件；如需安静输出，可传入 `--no-stream`。需要查看模型实时文本时可传入 `--stream-llm-tokens`。LLM 请求可通过 `--llm-timeout` 和 `--llm-retries` 控制超时与重试。
+- workflow 同时记录 `attempted_finding_indexes` 与 `resolved_finding_indexes`：dry-run 或仅生成建议只算 attempted，只有 `--apply-fixes` 写回且沙箱通过后才算 resolved。
 
 ## 4. 分层设计
 
@@ -66,7 +67,7 @@ scan
 ### 4.2 Agent 层
 
 - `llm_code_reviewer`：调用真实 LLM 做语义审查。
-- `llm_fix_planner`：从 LLM review findings 和沙箱反馈中选择本轮修复目标，并给出修复顺序。
+- `llm_fix_planner`：优先调用真实 LLM 从 review findings 和沙箱反馈中选择本轮修复目标，并给出修复顺序；失败时降级到规则排序。
 - `llm_code_fixer`：调用真实 LLM 生成源码修复建议，并可在 `--apply-fixes` 下写回。
 - `llm_test_generator`：调用真实 LLM 生成 pytest。
 - `sandbox_validator`：在 local 或 Docker 后端运行生成测试。

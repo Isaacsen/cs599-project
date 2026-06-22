@@ -32,6 +32,8 @@ class LLMConfig:
     api_key_set: bool
     api_key_env: str
     base_url: str = ""
+    timeout_seconds: int = 120
+    max_retries: int = 1
 
     @classmethod
     def from_env(cls) -> "LLMConfig":
@@ -39,12 +41,16 @@ class LLMConfig:
         model = os.getenv("LLM_MODEL", "").strip() or DEFAULT_MODELS.get(provider, "")
         api_key, api_key_env = get_llm_api_key(provider)
         base_url = os.getenv("LLM_BASE_URL", "").strip() or DEFAULT_BASE_URLS.get(provider, "")
+        timeout_seconds = _positive_int(os.getenv("LLM_TIMEOUT_SECONDS"), 120)
+        max_retries = _positive_int(os.getenv("LLM_MAX_RETRIES"), 1)
         return cls(
             provider=provider,
             model=model,
             api_key_set=bool(api_key),
             api_key_env=api_key_env,
             base_url=base_url,
+            timeout_seconds=timeout_seconds,
+            max_retries=max_retries,
         )
 
     def api_key(self) -> str:
@@ -73,3 +79,11 @@ def _api_key_env_names(provider: str) -> list[str]:
 def normalize_provider(provider: str | None) -> str:
     normalized = (provider or DEFAULT_PROVIDER).strip().lower() or DEFAULT_PROVIDER
     return PROVIDER_ALIASES.get(normalized, normalized)
+
+
+def _positive_int(value: str | None, default: int) -> int:
+    try:
+        parsed = int(value or "")
+    except ValueError:
+        return default
+    return parsed if parsed > 0 else default

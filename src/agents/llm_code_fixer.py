@@ -70,7 +70,7 @@ def fix_code_with_llm(
         )
 
     prompt = _build_fix_prompt(root, scan, llm_review, fix_plan, sandbox_validation, repair_actions or [], max_files)
-    active_client = client or OpenAICompatibleLLMClient(active_config, timeout_seconds=120)
+    active_client = client or OpenAICompatibleLLMClient(active_config)
     try:
         raw_response = active_client.generate(prompt)
     except Exception as exc:
