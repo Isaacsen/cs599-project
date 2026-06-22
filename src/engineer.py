@@ -75,6 +75,11 @@ def build_parser() -> argparse.ArgumentParser:
         default=8,
         help="Maximum public functions to consider for generated tests.",
     )
+    parser.add_argument(
+        "--no-stream",
+        action="store_true",
+        help="Disable live per-agent progress output.",
+    )
     return parser
 
 
@@ -94,6 +99,7 @@ def main() -> int:
             repair_iterations=args.repair_iterations,
             llm_test_file_path=args.llm_test_file,
             max_functions=args.max_functions,
+            progress_callback=None if args.no_stream else _print_agent_progress,
         )
         output_path = write_software_engineer_graph_result(report, args.output)
         markdown_path = write_software_engineer_markdown(report, args.output_md)
@@ -105,6 +111,52 @@ def main() -> int:
     print(f"\nSoftware Engineer Report: {output_path}")
     print(f"Readable Report: {markdown_path}")
     return 0
+
+
+def _print_agent_progress(node: str, state: dict) -> None:
+    is_start = node.endswith(":start")
+    base_node = node.removesuffix(":start")
+    labels = {
+        "scan": "Repo scan",
+        "llm_review": "LLM review",
+        "llm_fix_plan": "LLM fix planner",
+        "llm_fix": "LLM code fixer",
+        "llm_tests": "LLM test writer",
+        "sandbox_validate": "Sandbox pytest",
+        "repair_loop": "Repair loop",
+        "coverage_feedback": "Coverage feedback",
+        "finish": "Finish",
+    }
+    if is_start:
+        print(f"[agent-stream] {labels.get(base_node, base_node)}: starting", flush=True)
+        return
+    print(f"[agent-stream] {labels.get(base_node, base_node)}: {_progress_status(base_node, state)}", flush=True)
+
+
+def _progress_status(node: str, state: dict) -> str:
+    if node == "scan" and state.get("scan"):
+        return f"{len(state['scan'].source_files)} source file(s)"
+    if node == "llm_review" and state.get("llm_review"):
+        return f"{state['llm_review'].finding_count} finding(s)"
+    if node == "llm_fix_plan" and state.get("llm_fix_plan"):
+        plan = state["llm_fix_plan"]
+        return f"{plan.target_count} target(s), remaining={plan.remaining_count}, {plan.status}"
+    if node == "llm_fix" and state.get("llm_fix"):
+        report = state["llm_fix"]
+        return f"{report.fix_count} fix(es), {report.status}"
+    if node == "llm_tests" and state.get("llm_tests"):
+        return f"{state['llm_tests'].generated_test_count} test(s), {state['llm_tests'].status}"
+    if node == "sandbox_validate" and state.get("sandbox_validation"):
+        report = state["sandbox_validation"]
+        return f"{report.status}, {report.analysis.passed}/{report.analysis.total} passed"
+    if node == "repair_loop" and state.get("repair_loop"):
+        report = state["repair_loop"]
+        return f"{report.status}, next={report.next_step}"
+    if node == "coverage_feedback" and state.get("coverage_feedback"):
+        return f"{state['coverage_feedback'].coverage_ratio:.0%}"
+    if node == "finish":
+        return state.get("status", "unknown")
+    return "completed"
 
 
 if __name__ == "__main__":

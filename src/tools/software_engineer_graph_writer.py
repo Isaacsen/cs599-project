@@ -25,6 +25,7 @@ def software_engineer_graph_result_to_dict(result: SoftwareEngineerGraphResult) 
             "apply_tests": state.get("apply_tests", False),
             "run_sandbox": state.get("run_sandbox", False),
             "sandbox_executor": state.get("sandbox_executor", "docker"),
+            "processed_finding_indexes": state.get("processed_finding_indexes", []),
         },
     }
     if "scan" in state:
@@ -164,6 +165,7 @@ def _llm_fix_plan_to_dict(plan: LLMFixPlan) -> dict[str, Any]:
         "rationale": plan.rationale,
         "summary": {
             "target_count": plan.target_count,
+            "remaining_count": plan.remaining_count,
         },
         "targets": [
             {
@@ -215,7 +217,7 @@ def _node_result(state: dict[str, Any], node: str, occurrence: int = 1) -> str:
                 "llm_fix_plan_history",
                 "llm_fix_plan",
                 occurrence,
-                lambda plan: f"{plan.target_count} target(s), {plan.status}",
+                lambda plan: f"{plan.target_count} target(s), {plan.status}, remaining={plan.remaining_count}",
             ),
         ),
         "llm_fix": ("llm_fix", lambda: _history_result(state, "llm_fix_history", "llm_fix", occurrence, _fix_result)),
@@ -330,8 +332,9 @@ def _fix_plan_section(plan: Any) -> list[str]:
     if plan is None:
         return ["LLM fix planner was not run."]
     if not plan.targets:
-        return [f"Status: `{plan.status}`. No fix targets were selected."]
-    lines = ["| Order | Finding | Severity | Reason |", "| ---: | --- | --- | --- |"]
+        return [f"Status: `{plan.status}`. No fix targets were selected. Remaining findings: {plan.remaining_count}."]
+    lines = [f"Remaining findings after this plan: **{plan.remaining_count}**", ""]
+    lines.extend(["| Order | Finding | Severity | Reason |", "| ---: | --- | --- | --- |"])
     for order, target in enumerate(plan.targets, start=1):
         finding = f"{target.file_path}:{target.line} ({target.rule})"
         lines.append(

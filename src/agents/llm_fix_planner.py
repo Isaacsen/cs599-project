@@ -26,6 +26,7 @@ class LLMFixPlan:
     status: str
     targets: list[LLMFixTarget]
     rationale: str
+    remaining_count: int = 0
 
     @property
     def target_count(self) -> int:
@@ -36,11 +37,17 @@ def plan_llm_fixes(
     llm_review: LLMCodeReviewReport | None,
     sandbox_validation: SandboxValidationReport | None = None,
     max_targets: int = MAX_FINDINGS_PER_FIX,
+    exclude_finding_indexes: set[int] | None = None,
 ) -> LLMFixPlan:
     if llm_review is None or not llm_review.findings:
         return LLMFixPlan(status="no_findings", targets=[], rationale="No LLM review findings are available.")
 
-    ranked = _rank_findings(llm_review.findings, sandbox_validation)
+    excluded = exclude_finding_indexes or set()
+    ranked = [
+        item
+        for item in _rank_findings(llm_review.findings, sandbox_validation)
+        if item[0] not in excluded
+    ]
     targets = [
         LLMFixTarget(
             finding_index=index,
@@ -52,10 +59,12 @@ def plan_llm_fixes(
         )
         for index, finding in ranked[:max_targets]
     ]
+    remaining_count = max(0, len(ranked) - len(targets))
     return LLMFixPlan(
         status="planned" if targets else "no_targets",
         targets=targets,
         rationale="Fix higher severity and sandbox-relevant findings first.",
+        remaining_count=remaining_count,
     )
 
 

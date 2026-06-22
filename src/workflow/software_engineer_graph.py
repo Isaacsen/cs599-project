@@ -2,7 +2,7 @@
 
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, TypedDict
+from typing import Any, Callable, TypedDict
 
 from src.agents.coverage_feedback import CoverageFeedbackReport, build_coverage_feedback
 from src.agents.llm_code_fixer import LLMCodeFixReport, fix_code_with_llm
@@ -50,6 +50,7 @@ class SoftwareEngineerGraphState(TypedDict, total=False):
     repair_loop: RepairLoopReport
     repair_history: list[RepairLoopReport]
     repair_iteration: int
+    processed_finding_indexes: list[int]
     coverage_feedback: CoverageFeedbackReport
     node_trace: list[str]
 
@@ -87,6 +88,7 @@ def run_software_engineer_graph(
     repair_iterations: int = 3,
     llm_test_file_path: str | Path = "tests/test_software_engineer_llm_generated.py",
     max_functions: int = 8,
+    progress_callback: Callable[[str, SoftwareEngineerGraphState], None] | None = None,
 ) -> SoftwareEngineerGraphResult:
     initial_state: SoftwareEngineerGraphState = {
         "project_path": str(Path(project_path).resolve()),
@@ -100,14 +102,18 @@ def run_software_engineer_graph(
         "repair_iteration": 0,
         "llm_test_file_path": str(llm_test_file_path),
         "max_functions": max_functions,
+        "processed_finding_indexes": [],
         "node_trace": [],
     }
 
     if LANGGRAPH_AVAILABLE:
         graph = build_software_engineer_graph()
-        final_state = graph.invoke(initial_state)
+        if progress_callback is None:
+            final_state = graph.invoke(initial_state)
+        else:
+            final_state = _run_langgraph_stream(graph, initial_state, progress_callback)
     else:
-        final_state = _run_fallback_graph(initial_state)
+        final_state = _run_fallback_graph(initial_state, progress_callback=progress_callback)
     return SoftwareEngineerGraphResult(state=final_state)
 
 
@@ -175,6 +181,7 @@ def llm_fix_plan_node(state: SoftwareEngineerGraphState) -> SoftwareEngineerGrap
     llm_fix_plan = plan_llm_fixes(
         state.get("llm_review"),
         sandbox_validation=state.get("sandbox_validation"),
+        exclude_finding_indexes=set(state.get("processed_finding_indexes", [])),
     )
     return {
         "llm_fix_plan": llm_fix_plan,
@@ -240,10 +247,14 @@ def repair_loop_node(state: SoftwareEngineerGraphState) -> SoftwareEngineerGraph
         current_iteration=state.get("repair_iteration", 0),
         max_iterations=state.get("repair_iterations", 3),
     )
+    processed = state.get("processed_finding_indexes", [])
+    if repair_loop.status == "complete" and state.get("sandbox_validation") and state["sandbox_validation"].passed:
+        processed = _merge_processed_findings(processed, state.get("llm_fix_plan"))
     return {
         "repair_loop": repair_loop,
         "repair_history": [*state.get("repair_history", []), repair_loop],
         "repair_iteration": repair_loop.iteration,
+        "processed_finding_indexes": processed,
         "node_trace": [*state.get("node_trace", []), "repair_loop"],
     }
 
@@ -319,11 +330,14 @@ def _node_status(state: SoftwareEngineerGraphState, node: str, occurrence: int =
     if node == "llm_review" and "llm_review" in state:
         return f"{state['llm_review'].finding_count} finding(s)"
     if node == "llm_fix_plan" and "llm_fix_plan" in state:
-        return f"{state['llm_fix_plan'].target_count} target(s), {state['llm_fix_plan'].status}"
+        plan = _history_item(state.get("llm_fix_plan_history", []), occurrence) or state["llm_fix_plan"]
+        return f"{plan.target_count} target(s), {plan.status}, remaining={plan.remaining_count}"
     if node == "llm_fix" and "llm_fix" in state:
-        return f"{state['llm_fix'].fix_count} fix(es), {state['llm_fix'].status}"
+        report = _history_item(state.get("llm_fix_history", []), occurrence) or state["llm_fix"]
+        return f"{report.fix_count} fix(es), {report.status}"
     if node == "llm_tests" and "llm_tests" in state:
-        return f"{state['llm_tests'].generated_test_count} test(s)"
+        report = _history_item(state.get("llm_tests_history", []), occurrence) or state["llm_tests"]
+        return f"{report.generated_test_count} test(s)"
     if node == "sandbox_validate" and "sandbox_validation" in state:
         report = _history_item(state.get("sandbox_validation_history", []), occurrence) or state["sandbox_validation"]
         return f"{report.status}, {report.analysis.passed}/{report.analysis.total} passed"
@@ -345,7 +359,10 @@ def _format_highlights(state: SoftwareEngineerGraphState) -> list[str]:
         highlights.append(f"  - LLM review: [{first.severity}] {first.message}")
     fix_plan = state.get("llm_fix_plan")
     if fix_plan:
-        highlights.append(f"  - LLM fix plan: {fix_plan.target_count} target(s), {fix_plan.status}")
+        highlights.append(
+            f"  - LLM fix plan: {fix_plan.target_count} target(s), {fix_plan.status}, "
+            f"remaining={fix_plan.remaining_count}"
+        )
     llm_fix = state.get("llm_fix")
     if llm_fix:
         highlights.append(f"  - LLM fix: {llm_fix.fix_count} fix(es), {llm_fix.status}")
@@ -396,6 +413,14 @@ def _route_after_repair_loop(state: SoftwareEngineerGraphState) -> str:
         return "llm_fix_plan"
     if report is not None and report.next_step == "llm_tests":
         return "llm_tests"
+    if (
+        report is not None
+        and report.status == "complete"
+        and state.get("sandbox_validation") is not None
+        and state["sandbox_validation"].passed
+        and _has_unprocessed_findings(state)
+    ):
+        return "llm_fix_plan"
     return "coverage_feedback"
 
 
@@ -412,24 +437,87 @@ def _history_item(items: list[Any], occurrence: int) -> Any | None:
     return items[index]
 
 
-def _run_fallback_graph(initial_state: SoftwareEngineerGraphState) -> SoftwareEngineerGraphState:
+def _run_langgraph_stream(
+    graph: Any,
+    initial_state: SoftwareEngineerGraphState,
+    progress_callback: Callable[[str, SoftwareEngineerGraphState], None],
+) -> SoftwareEngineerGraphState:
+    state: SoftwareEngineerGraphState = dict(initial_state)
+    for event in graph.stream(initial_state, stream_mode="debug"):
+        event_type = event.get("type")
+        payload = event.get("payload", {})
+        node = payload.get("name")
+        if not node:
+            continue
+        if event_type == "task":
+            progress_callback(f"{node}:start", state)
+        elif event_type == "task_result":
+            update = payload.get("result")
+            if isinstance(update, dict):
+                state.update(update)
+            progress_callback(node, state)
+    return state
+
+
+def _run_fallback_graph(
+    initial_state: SoftwareEngineerGraphState,
+    progress_callback: Callable[[str, SoftwareEngineerGraphState], None] | None = None,
+) -> SoftwareEngineerGraphState:
     state: SoftwareEngineerGraphState = dict(initial_state)
     state.update(scan_node(state))
+    _emit_progress(progress_callback, "scan", state)
     state.update(llm_review_node(state))
+    _emit_progress(progress_callback, "llm_review", state)
     state.update(llm_fix_plan_node(state))
+    _emit_progress(progress_callback, "llm_fix_plan", state)
     state.update(llm_fix_node(state))
+    _emit_progress(progress_callback, "llm_fix", state)
     state.update(llm_tests_node(state))
+    _emit_progress(progress_callback, "llm_tests", state)
     if _route_after_generated_tests(state) == "sandbox_validate":
         state.update(sandbox_validate_node(state))
+        _emit_progress(progress_callback, "sandbox_validate", state)
         state.update(repair_loop_node(state))
+        _emit_progress(progress_callback, "repair_loop", state)
         while _route_after_repair_loop(state) in {"llm_fix_plan", "llm_tests"}:
             if _route_after_repair_loop(state) == "llm_fix_plan":
                 state.update(llm_fix_plan_node(state))
+                _emit_progress(progress_callback, "llm_fix_plan", state)
                 state.update(llm_fix_node(state))
+                _emit_progress(progress_callback, "llm_fix", state)
             state.update(llm_tests_node(state))
+            _emit_progress(progress_callback, "llm_tests", state)
             state.update(sandbox_validate_node(state))
+            _emit_progress(progress_callback, "sandbox_validate", state)
             state.update(repair_loop_node(state))
+            _emit_progress(progress_callback, "repair_loop", state)
     state.update(coverage_feedback_node(state))
+    _emit_progress(progress_callback, "coverage_feedback", state)
     state.update(finish_node(state))
+    _emit_progress(progress_callback, "finish", state)
     state["graph_runtime"] = "fallback"
     return state
+
+
+def _emit_progress(
+    progress_callback: Callable[[str, SoftwareEngineerGraphState], None] | None,
+    node: str,
+    state: SoftwareEngineerGraphState,
+) -> None:
+    if progress_callback is not None:
+        progress_callback(node, state)
+
+
+def _merge_processed_findings(processed: list[int], plan: LLMFixPlan | None) -> list[int]:
+    merged = set(processed)
+    if plan is not None:
+        merged.update(target.finding_index for target in plan.targets)
+    return sorted(merged)
+
+
+def _has_unprocessed_findings(state: SoftwareEngineerGraphState) -> bool:
+    review = state.get("llm_review")
+    if review is None:
+        return False
+    processed = set(state.get("processed_finding_indexes", []))
+    return any(index not in processed for index, _finding in enumerate(review.findings))

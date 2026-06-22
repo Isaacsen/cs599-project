@@ -1,4 +1,4 @@
-﻿{
+{
   "summary": {
     "total_cases": 1,
     "passed_cases": 1,
@@ -7,7 +7,7 @@
     "total_pytest_cases": 5,
     "generated_test_cases": 2,
     "planned_test_cases": 2,
-    "total_duration_seconds": 1.1441970000014408
+    "total_duration_seconds": 1.6710421000025235
   },
   "results": [
     {
@@ -31,9 +31,9 @@
         "execution": {
           "passed": true,
           "exit_code": 0,
-          "stdout": "============================= test session starts ==============================\nplatform linux -- Python 3.11.15, pytest-9.1.0, pluggy-1.6.0\nrootdir: /workspace\ncollected 5 items\n\ntest_calculator.py ...                                                   [ 60%]\ntests/test_software_engineer_generated.py ..                                     [100%]\n\n============================== 5 passed in 0.06s ===============================\n",
+          "stdout": "============================= test session starts ==============================\nplatform linux -- Python 3.11.15, pytest-9.1.0, pluggy-1.6.0\nrootdir: /workspace\ncollected 5 items\n\ntest_calculator.py ...                                                   [ 60%]\ntests/test_software_engineer_generated.py ..                             [100%]\n\n============================== 5 passed in 0.07s ===============================\n",
           "stderr": "",
-          "duration_seconds": 1.1441970000014408,
+          "duration_seconds": 1.6710421000025235,
           "timed_out": false,
           "executor": "docker"
         },

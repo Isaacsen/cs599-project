@@ -198,6 +198,7 @@ class SoftwareEngineerGraphTest(unittest.TestCase):
         )
         self.assertEqual(3, result.state["llm_review"].finding_count)
         self.assertEqual(2, result.state["llm_fix_plan"].target_count)
+        self.assertEqual(1, result.state["llm_fix_plan"].remaining_count)
         self.assertEqual(1, result.state["llm_fix"].fix_count)
         self.assertEqual(3, result.generated_llm_test_count)
         self.assertEqual(original_content, source_file.read_text(encoding="utf-8"))
@@ -267,10 +268,12 @@ class SoftwareEngineerGraphTest(unittest.TestCase):
         self.assertIn("repair_loop", result.node_trace)
         self.assertTrue(result.state["sandbox_validation"].passed)
         self.assertEqual("complete", result.state["repair_loop"].status)
+        self.assertEqual([0, 1, 2], result.state["processed_finding_indexes"])
 
     def test_repair_loop_retries_llm_tests_after_sandbox_failure(self) -> None:
         sandbox_reports = [
             _sandbox_report(self.project_path, passed=False),
+            _sandbox_report(self.project_path, passed=True),
             _sandbox_report(self.project_path, passed=True),
         ]
 
@@ -299,6 +302,71 @@ class SoftwareEngineerGraphTest(unittest.TestCase):
                 "llm_review",
                 "llm_fix_plan",
                 "llm_fix",
+                "llm_tests",
+                "sandbox_validate",
+                "repair_loop",
+                "llm_fix_plan",
+                "llm_fix",
+                "llm_tests",
+                "sandbox_validate",
+                "repair_loop",
+                "llm_fix_plan",
+                "llm_fix",
+                "llm_tests",
+                "sandbox_validate",
+                "repair_loop",
+                "coverage_feedback",
+                "finish",
+            ],
+            result.node_trace,
+        )
+        self.assertEqual(3, fix_mock.call_count)
+        self.assertEqual(3, generate_mock.call_count)
+        self.assertEqual(3, sandbox_mock.call_count)
+        self.assertEqual(3, len(result.state["repair_history"]))
+        self.assertEqual("llm_fix", result.state["repair_history"][0].next_step)
+        self.assertEqual("complete", result.state["repair_loop"].status)
+
+    def test_repair_loop_routes_generated_test_errors_to_llm_tests(self) -> None:
+        sandbox_reports = [
+            _sandbox_report(
+                self.project_path,
+                passed=False,
+                failure_types=["import_error", "pytest_error"],
+                suggestions=["Check generated test imports."],
+            ),
+            _sandbox_report(self.project_path, passed=True),
+            _sandbox_report(self.project_path, passed=True),
+        ]
+
+        def fake_sandbox_validation(*args, **kwargs):
+            return sandbox_reports.pop(0)
+
+        with (
+            patch("src.workflow.software_engineer_graph.review_repository_with_llm", side_effect=_fake_llm_review),
+            patch("src.workflow.software_engineer_graph.fix_code_with_llm", side_effect=_fake_llm_fix) as fix_mock,
+            patch("src.workflow.software_engineer_graph.generate_llm_pytest_tests", side_effect=_fake_llm_generation) as generate_mock,
+            patch(
+                "src.workflow.software_engineer_graph.validate_generated_tests_in_sandbox",
+                side_effect=fake_sandbox_validation,
+            ) as sandbox_mock,
+        ):
+            result = run_software_engineer_graph(
+                self.project_path,
+                run_sandbox=True,
+                sandbox_executor="local",
+                repair_iterations=1,
+            )
+
+        self.assertEqual(
+            [
+                "scan",
+                "llm_review",
+                "llm_fix_plan",
+                "llm_fix",
+                "llm_tests",
+                "sandbox_validate",
+                "repair_loop",
                 "llm_tests",
                 "sandbox_validate",
                 "repair_loop",
@@ -313,62 +381,8 @@ class SoftwareEngineerGraphTest(unittest.TestCase):
             result.node_trace,
         )
         self.assertEqual(2, fix_mock.call_count)
-        self.assertEqual(2, generate_mock.call_count)
-        self.assertEqual(2, sandbox_mock.call_count)
-        self.assertEqual(2, len(result.state["repair_history"]))
-        self.assertEqual("llm_fix", result.state["repair_history"][0].next_step)
-        self.assertEqual("complete", result.state["repair_loop"].status)
-
-    def test_repair_loop_routes_generated_test_errors_to_llm_tests(self) -> None:
-        sandbox_reports = [
-            _sandbox_report(
-                self.project_path,
-                passed=False,
-                failure_types=["import_error", "pytest_error"],
-                suggestions=["Check generated test imports."],
-            ),
-            _sandbox_report(self.project_path, passed=True),
-        ]
-
-        def fake_sandbox_validation(*args, **kwargs):
-            return sandbox_reports.pop(0)
-
-        with (
-            patch("src.workflow.software_engineer_graph.review_repository_with_llm", side_effect=_fake_llm_review),
-            patch("src.workflow.software_engineer_graph.fix_code_with_llm", side_effect=_fake_llm_fix) as fix_mock,
-            patch("src.workflow.software_engineer_graph.generate_llm_pytest_tests", side_effect=_fake_llm_generation) as generate_mock,
-            patch(
-                "src.workflow.software_engineer_graph.validate_generated_tests_in_sandbox",
-                side_effect=fake_sandbox_validation,
-            ) as sandbox_mock,
-        ):
-            result = run_software_engineer_graph(
-                self.project_path,
-                run_sandbox=True,
-                sandbox_executor="local",
-                repair_iterations=1,
-            )
-
-        self.assertEqual(
-            [
-                "scan",
-                "llm_review",
-                "llm_fix_plan",
-                "llm_fix",
-                "llm_tests",
-                "sandbox_validate",
-                "repair_loop",
-                "llm_tests",
-                "sandbox_validate",
-                "repair_loop",
-                "coverage_feedback",
-                "finish",
-            ],
-            result.node_trace,
-        )
-        self.assertEqual(1, fix_mock.call_count)
-        self.assertEqual(2, generate_mock.call_count)
-        self.assertEqual(2, sandbox_mock.call_count)
+        self.assertEqual(3, generate_mock.call_count)
+        self.assertEqual(3, sandbox_mock.call_count)
         self.assertEqual("llm_tests", result.state["repair_history"][0].next_step)
 
     def test_repair_loop_stops_after_three_retries(self) -> None:
