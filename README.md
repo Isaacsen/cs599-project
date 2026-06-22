@@ -245,4 +245,3 @@ scripts/final_verify.ps1
 - [x] Local / Docker sandbox 验证
 - [x] JSON / Markdown / PDF 报告
 - [x] Benchmark 与单元测试
-- [ ] 报告封面中的学号、姓名、专业待最终填写
